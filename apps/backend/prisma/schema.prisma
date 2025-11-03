@@ -1,0 +1,62 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Contract {
+  id              String    @id
+  userId          String
+  name            String
+  price           Decimal   @db.Decimal(10, 2)
+  cycle           Cycle
+  startDate       DateTime
+  endDate         DateTime?
+  debitDayOfMonth Int
+  category        Category
+  documents       Json?
+  isActive        Boolean   @default(true)
+  User            User      @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model Role {
+  id   String @id
+  name String @unique
+  User User[]
+}
+
+model User {
+  id           String     @id
+  name         String
+  passwordHash String
+  roleId       String
+  Contract     Contract[]
+  Role         Role       @relation(fields: [roleId], references: [id])
+}
+
+enum Category {
+  INSURANCE
+  ENERGY
+  INTERNET
+  PHONE
+  STREAMING
+  FOOD
+  TRANSPORT
+  HEALTH
+  EDUCATION
+  SUBSCRIPTION
+  OTHER
+}
+
+enum Cycle {
+  MONTHLY
+  QUARTERLY
+  HALF_YEARLY
+  YEARLY
+}
