@@ -1,6 +1,7 @@
 import Image, { type ImageProps } from "next/image";
 import { Button } from "@repo/ui/button";
 import styles from "./page.module.css";
+import axios from "axios";
 
 type Props = Omit<ImageProps, "src"> & {
   srcLight: string;
@@ -19,6 +20,10 @@ const ThemeImage = (props: Props) => {
 };
 
 export default function Home() {
+  const user = axios.get("/user/abc")
+    .then(res => console.log(res.data))
+    .catch(err => console.error(err));
+
   return (
     <div className={styles.page}>
       <main className={styles.main}>
