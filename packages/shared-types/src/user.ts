@@ -10,7 +10,8 @@ export type LoginInput = z.infer<typeof LoginSchema>;
 // User DTO
 export const UserDTO = z.object({
   id: z.string(),
-  email: z.string().email(),
-  name: z.string().nullable().optional()
+  name: z.string(),
+  passwordHash: z.string(),
+  roleId: z.string(),
 });
 export type UserDTO = z.infer<typeof UserDTO>;

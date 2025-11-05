@@ -1,11 +1,31 @@
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+enum Category {
+  INSURANCE
+  ENERGY
+  INTERNET
+  PHONE
+  STREAMING
+  FOOD
+  TRANSPORT
+  HEALTH
+  EDUCATION
+  SUBSCRIPTION
+  OTHER
+}
+
+enum Cycle {
+  MONTHLY
+  QUARTERLY
+  HALF_YEARLY
+  YEARLY
 }
 
 model Contract {
@@ -38,25 +58,4 @@ model User {
   roleId       String
   Contract     Contract[]
   Role         Role       @relation(fields: [roleId], references: [id])
-}
-
-enum Category {
-  INSURANCE
-  ENERGY
-  INTERNET
-  PHONE
-  STREAMING
-  FOOD
-  TRANSPORT
-  HEALTH
-  EDUCATION
-  SUBSCRIPTION
-  OTHER
-}
-
-enum Cycle {
-  MONTHLY
-  QUARTERLY
-  HALF_YEARLY
-  YEARLY
 }
