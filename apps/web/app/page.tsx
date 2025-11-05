@@ -1,8 +1,8 @@
 "use client"
 import { type ImageProps } from "next/image";
-import styles from "./page.module.css";
 import axios from "@web/lib/axios";
 import { useState } from "react";
+import { Button } from "@web/components/ui/button";
 
 type Props = Omit<ImageProps, "src"> & {
   srcLight: string;
@@ -37,24 +37,25 @@ export default function Home() {
   }
 
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <div style={{ display: "flex", gap: "10px" }}>
-          <button 
+    <div className="h-screen w-screen bg-gray-100 dark:bg-gray-900">
+      <main className="h-full w-full flex flex-col items-center justify-center gap-4 p-4">
+        <div className="flex gap-4">
+          <Button
+            variant="default"
             onClick={getUser}
           >
             Get User
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={createUser}
           >
             Create User
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={deleteUser}
           >
             Delete User
-          </button>
+          </Button>
         </div>
         <p>{text}</p>
       </main>
