@@ -49,6 +49,7 @@ model Contract {
 model User {
   userId        String     @id
   name          String
+  email         String     @unique
   passwordHash  String
   contracts     Contract[] // Opposite relation field needed in Prisma
 }
