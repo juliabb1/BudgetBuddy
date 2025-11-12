@@ -29,7 +29,7 @@ enum Cycle {
 }
 
 model Contract {
-  id              String    @id
+  contractId      String    @id
   userId          String
   name            String
   price           Decimal   @db.Decimal(10, 2)
@@ -40,22 +40,15 @@ model Contract {
   category        Category
   documents       Json?
   isActive        Boolean   @default(true)
-  User            User      @relation(fields: [userId], references: [id])
+
+  user            User      @relation(fields: [userId], references: [userId])
 
   @@index([userId])
 }
 
-model Role {
-  id   String @id
-  name String @unique
-  User User[]
-}
-
 model User {
-  id           String     @id
-  name         String
-  passwordHash String
-  roleId       String
-  Contract     Contract[]
-  Role         Role       @relation(fields: [roleId], references: [id])
+  userId        String     @id
+  name          String
+  passwordHash  String
+  contracts     Contract[] // Opposite relation field needed in Prisma
 }
