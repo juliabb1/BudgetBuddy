@@ -7,18 +7,18 @@ import {
   Post,
   Put,
 } from '@nestjs/common';
-import { UserService } from './user.service';
-import { UserDTO } from '@repo/shared-types/user';
 import { User as UserModel } from '@prisma/client';
+import { UserDTO } from '@repo/shared-types/user';
+import { UserService } from './user.service';
 
 @Controller('user')
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
   @Get(':id')
-  getUser(@Param('id') id: string) {
-    const user = this.userService.getUser({
-      id: id,
+  async getUser(@Param('id') id: string) {
+    const user = await this.userService.getUser({
+      userId: id,
     });
 
     if (user !== null) {
@@ -28,12 +28,11 @@ export class UserController {
   }
 
   @Post()
-  createUser(@Body() user: UserDTO): Promise<UserModel> {
+  createUser(@Body() user: UserDTO & { email: string }): Promise<UserModel> {
     return this.userService.createUser({
-      id: user.id,
       name: user.name,
+      email: user.email,
       passwordHash: user.passwordHash,
-      Role: { connect: { id: user.roleId } },
     });
   }
 
@@ -43,17 +42,16 @@ export class UserController {
     @Body() user: UserDTO,
   ): Promise<UserModel> {
     return this.userService.updateUser({
-      where: { id: id },
+      where: { userId: id },
       data: {
         name: user.name,
         passwordHash: user.passwordHash,
-        Role: { connect: { id: user.roleId } },
       },
     });
   }
 
   @Delete(':id')
   deleteUser(@Param('id') id: string): Promise<UserModel> {
-    return this.userService.deleteUser({ id: id });
+    return this.userService.deleteUser({ userId: id });
   }
 }

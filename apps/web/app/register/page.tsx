@@ -56,12 +56,17 @@ export default function RegisterPage() {
       });
 
       const data = await res.json();
-      if (!res.ok)
+      if (!res.ok) {
+        console.error("Registration failed:", data);
         throw new Error(data.message || "Fehler bei der Registrierung");
+      }
 
       router.push("/login");
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Ein unbekannter Fehler ist aufgetreten";
+      setError(errorMessage);
+      console.error("Registration error:", err);
     }
   };
 
