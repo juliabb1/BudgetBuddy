@@ -48,6 +48,9 @@ importers:
       '@prisma/client':
         specifier: ^6.18.0
         version: 6.18.0(prisma@6.18.0(typescript@5.9.2))(typescript@5.9.2)
+      '@repo/shared-types':
+        specifier: workspace:^
+        version: link:../../packages/shared-types
       dotenv:
         specifier: ^17.2.3
         version: 17.2.3
@@ -73,9 +76,6 @@ importers:
       '@nestjs/testing':
         specifier: ^11.0.1
         version: 11.1.8(@nestjs/common@11.1.8(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.8(@nestjs/common@11.1.8(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/platform-express@11.1.8)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/platform-express@11.1.8(@nestjs/common@11.1.8(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.8))
-      '@repo/shared-types':
-        specifier: workspace:^
-        version: link:../../packages/shared-types
       '@types/express':
         specifier: ^5.0.0
         version: 5.0.5
@@ -257,6 +257,10 @@ importers:
       zod:
         specifier: ^4.1.12
         version: 4.1.12
+    devDependencies:
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.2
 
   packages/typescript-config: {}
 

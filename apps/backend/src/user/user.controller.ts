@@ -3,17 +3,24 @@ import {
   Controller,
   Delete,
   Get,
+  HttpException,
+  Logger,
   Param,
   Post,
   Put,
 } from '@nestjs/common';
 import { User as UserModel } from '@prisma/client';
-import { UserDTO } from '@repo/shared-types/user';
+import {
+  CreateUserInput,
+  UserDTO,
+} from '../../../../packages/shared-types/src/user';
 import { UserService } from './user.service';
 
 @Controller('user')
 export class UserController {
   constructor(private readonly userService: UserService) {}
+
+  private readonly logger = new Logger(UserController.name);
 
   @Get(':id')
   async getUser(@Param('id') id: string) {
@@ -28,12 +35,26 @@ export class UserController {
   }
 
   @Post()
-  createUser(@Body() user: UserDTO & { email: string }): Promise<UserModel> {
-    return this.userService.createUser({
-      name: user.name,
-      email: user.email,
-      passwordHash: user.passwordHash,
-    });
+  async createUser(@Body() user: CreateUserInput): Promise<UserModel> {
+    try {
+      return await this.userService.createUser({
+        name: user.name,
+        email: user.email,
+        passwordHash: user.passwordHash,
+      });
+    } catch (error: unknown) {
+      if (
+        error instanceof Error &&
+        'code' in error &&
+        (error as any).code === 'P2002'
+      ) {
+        // Prisma unique constraint violation error
+        this.logger.error('User creation failed - email already exists', error);
+        throw new HttpException('User mit dieser Mail existiert bereits.', 400);
+      }
+      // Re-throw other errors
+      throw error;
+    }
   }
 
   @Put(':id')

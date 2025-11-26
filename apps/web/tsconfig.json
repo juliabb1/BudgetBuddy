@@ -4,7 +4,9 @@
     "baseUrl": ".",
     "paths": {
       ".prisma/*": ["../../node_modules/.prisma/*"],
-      "@web/*": ["./*"]
+      "@web/*": ["./*"],
+      "@repo/shared-types": ["../../packages/shared-types/src/index.ts"],
+      "@repo/shared-types/*": ["../../packages/shared-types/src/*"]
     },
     "plugins": [
       {

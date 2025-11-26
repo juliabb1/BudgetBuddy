@@ -1,6 +1,14 @@
-import prisma from "@web/lib/prisma";
 import bcrypt from "bcryptjs";
 import type { NextApiRequest, NextApiResponse } from "next";
+
+const backendUrl =
+  process.env.BACKEND_URL ?? process.env.NEXT_PUBLIC_BACKEND_URL;
+
+if (!backendUrl) {
+  console.warn(
+    "REGISTER_API: BACKEND_URL or NEXT_PUBLIC_BACKEND_URL is not defined."
+  );
+}
 
 // Disable body parsing, we'll handle it manually if needed
 export const config = {
@@ -19,12 +27,13 @@ export default async function handler(
     return res.status(405).json({ message: "Method not allowed" });
   }
 
-  try {
-    // Log incoming request for debugging
-    console.log("Register request body:", req.body);
-    console.log("Content-Type:", req.headers["content-type"]);
+  if (!backendUrl) {
+    return res
+      .status(500)
+      .json({ message: "BACKEND_URL is not configured on the server." });
+  }
 
-    // Ensure body is parsed
+  try {
     const body = req.body;
     if (!body || Object.keys(body).length === 0) {
       return res.status(400).json({
@@ -49,17 +58,29 @@ export default async function handler(
       return res.status(400).json({ message: "Ungültige E-Mail-Adresse" });
     }
 
-    const existingUser = await prisma.user.findUnique({ where: { email } });
-    if (existingUser) {
-      return res.status(400).json({ message: "User existiert bereits" });
-    }
-
     const passwordHash = await bcrypt.hash(password, 10);
 
-    const user = await prisma.user.create({
-      data: { name, email, passwordHash },
+    console.log(`[REGISTER] Calling backend at: ${backendUrl}/user`);
+    const backendResponse = await fetch(`${backendUrl}/user`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ name, email, passwordHash }),
     });
+    console.log(
+      `[REGISTER] Backend response status: ${backendResponse.status}`
+    );
 
+    if (!backendResponse.ok) {
+      const errorBody = await backendResponse.json().catch(() => null);
+      const message =
+        (errorBody && (errorBody.message || errorBody.error)) ||
+        "Fehler im Backend";
+      return res.status(backendResponse.status).json({ message });
+    }
+
+    const user = await backendResponse.json();
     return res.status(201).json({ user });
   } catch (error: unknown) {
     console.error("Register error:", error);

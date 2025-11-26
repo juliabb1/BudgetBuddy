@@ -1,40 +1,16 @@
-
-
 pnpm PackageManager
 TechStack, gegliedert nach Ebene:
 
 Turborepo (Root):
+
 - prettier
 
 Packages:
-  shared-types:
-    - zod 
+shared-types: - zod
 
 Apps:
-  backend:
-    - @nestjs/config
-    - zod
-    - prisma
-    - prisma/client
-    - ts-ndoe
-  frontend:
-    - next.js  - with App Router
-    - tailwind
-    - axios
-    - zod
-
-
-
-
-
-
-
-
-
-
-
-
-
+backend: - @nestjs/config - zod - prisma - prisma/client - ts-ndoe
+frontend: - next.js - with App Router - tailwind - axios - zod
 
 # Turborepo starter
 

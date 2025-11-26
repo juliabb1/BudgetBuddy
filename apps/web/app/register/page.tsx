@@ -55,16 +55,29 @@ export default function RegisterPage() {
         body: JSON.stringify({ name, email, password }),
       });
 
-      const data = await res.json();
+      let data;
+      try {
+        data = await res.json();
+      } catch {
+        // If JSON parsing fails, try to get the text response
+        const textData = await res.text();
+        data = {
+          message: textData || "Ein unbekannter Fehler ist aufgetreten",
+        };
+      }
+
       if (!res.ok) {
         console.error("Registration failed:", data);
-        throw new Error(data.message || "Fehler bei der Registrierung");
+        const errorMsg = data.message || "Fehler bei der Registrierung";
+        throw new Error(errorMsg);
       }
 
       router.push("/login");
     } catch (err: unknown) {
       const errorMessage =
-        err instanceof Error ? err.message : "Ein unbekannter Fehler ist aufgetreten";
+        err instanceof Error
+          ? err.message
+          : "Ein unbekannter Fehler ist aufgetreten";
       setError(errorMessage);
       console.error("Registration error:", err);
     }
