@@ -2,16 +2,16 @@
   "name": "@repo/shared-types",
   "version": "0.0.0",
   "private": true,
-  "exports": {
-    "./*": "./src/*.ts"
-  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc --watch -p tsconfig.json"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
     "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
   }
 }

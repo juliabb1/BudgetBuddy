@@ -1,5 +1,6 @@
 generator client {
   provider = "prisma-client-js"
+  output   = "../../../node_modules/.prisma/backend-client"
 }
 
 datasource db {
@@ -29,7 +30,7 @@ enum Cycle {
 }
 
 model Contract {
-  contractId      String    @id
+  contractId String @id @default(cuid())
   userId          String
   name            String
   price           Decimal   @db.Decimal(10, 2)
@@ -47,7 +48,7 @@ model Contract {
 }
 
 model User {
-  userId        String     @id
+  userId       String     @id @default(cuid())
   name          String
   email         String     @unique
   passwordHash  String

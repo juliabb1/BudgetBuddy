@@ -3,7 +3,10 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@web/*": ["./*"]
+      ".prisma/*": ["../../node_modules/.prisma/*"],
+      "@web/*": ["./*"],
+      "@repo/shared-types": ["../../packages/shared-types/src/index.ts"],
+      "@repo/shared-types/*": ["../../packages/shared-types/src/*"]
     },
     "plugins": [
       {
@@ -18,7 +21,5 @@
     "next.config.js",
     ".next/types/**/*.ts"
   ],
-  "exclude": [
-    "node_modules"
-  ]
+  "exclude": ["node_modules"]
 }
