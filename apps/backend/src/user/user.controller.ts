@@ -9,6 +9,7 @@ import {
   Param,
   Post,
   Put,
+  UseGuards,
 } from '@nestjs/common';
 import { User as UserModel } from '@prisma/client';
 import bcrypt from 'bcryptjs';
@@ -17,14 +18,20 @@ import {
   LoginInput,
   UserDTO,
 } from '../../../../packages/shared-types/src/user';
+import { AuthService } from '../auth/auth.service';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { UserService } from './user.service';
 
 @Controller('user')
 export class UserController {
-  constructor(private readonly userService: UserService) {}
+  constructor(
+    private readonly userService: UserService,
+    private readonly authService: AuthService,
+  ) {}
 
   private readonly logger = new Logger(UserController.name);
 
+  @UseGuards(JwtAuthGuard)
   @Get(':id')
   async getUser(@Param('id') id: string) {
     const user = await this.userService.getUser({
@@ -38,7 +45,7 @@ export class UserController {
   }
 
   @Post('login')
-  async login(@Body() loginData: LoginInput): Promise<UserModel> {
+  async login(@Body() loginData: LoginInput) {
     const { email, password } = loginData;
 
     const user = await this.userService.getUser({
@@ -54,7 +61,7 @@ export class UserController {
       throw new HttpException('Invalid credentials', HttpStatus.UNAUTHORIZED);
     }
 
-    return user;
+    return this.authService.login(user);
   }
 
   @Post()
@@ -80,6 +87,7 @@ export class UserController {
     }
   }
 
+  @UseGuards(JwtAuthGuard)
   @Put(':id')
   updateUser(
     @Param('id') id: string,
@@ -94,6 +102,7 @@ export class UserController {
     });
   }
 
+  @UseGuards(JwtAuthGuard)
   @Delete(':id')
   deleteUser(@Param('id') id: string): Promise<UserModel> {
     return this.userService.deleteUser({ userId: id });

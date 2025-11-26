@@ -37,8 +37,14 @@ export default NextAuth({
             return null;
           }
 
-          const user = await response.json();
-          return { id: user.userId, name: user.name, email: user.email };
+          const data = await response.json();
+          // Store the JWT token from backend in user object
+          return {
+            id: data.user.userId,
+            name: data.user.name,
+            email: data.user.email,
+            accessToken: data.access_token,
+          };
         } catch (error) {
           console.error("Login error:", error);
           return null;
@@ -48,19 +54,21 @@ export default NextAuth({
   ],
   session: {
     strategy: "jwt",
-    maxAge: 24 * 60 * 60, // 24 hours-> jwt expiration
-    updateAge: 5 * 60, // 5 minutes -> session updates
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+    updateAge: 24 * 60 * 60, // 24 hours
   },
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
         token.userId = user.id;
+        token.accessToken = (user as any).accessToken;
       }
       return token;
     },
     async session({ session, token }) {
       if (token && session.user) {
         (session.user as any).id = token.userId as string;
+        (session as any).accessToken = token.accessToken as string;
       }
       return session;
     },
