@@ -1,11 +1,7 @@
-import { PrismaAdapter } from "@auth/prisma-adapter";
-import prisma from "@web/lib/prisma";
-import bcrypt from "bcryptjs";
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 
 export default NextAuth({
-  adapter: PrismaAdapter(prisma),
   providers: [
     CredentialsProvider({
       name: "Credentials",
@@ -16,23 +12,44 @@ export default NextAuth({
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
-        });
-        if (!user) return null;
+        const backendUrl =
+          process.env.BACKEND_URL ?? process.env.NEXT_PUBLIC_BACKEND_URL;
 
-        const isValid = await bcrypt.compare(
-          credentials.password,
-          user.passwordHash
-        );
-        if (!isValid) return null;
+        if (!backendUrl) {
+          console.error("BACKEND_URL not configured");
+          return null;
+        }
 
-        return { id: user.userId, name: user.name, email: user.email };
+        try {
+          const response = await fetch(`${backendUrl}/user/login`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              email: credentials.email,
+              password: credentials.password,
+            }),
+          });
+
+          if (!response.ok) {
+            console.error("Login failed:", response.status);
+            return null;
+          }
+
+          const user = await response.json();
+          return { id: user.userId, name: user.name, email: user.email };
+        } catch (error) {
+          console.error("Login error:", error);
+          return null;
+        }
       },
     }),
   ],
   session: {
     strategy: "jwt",
+    maxAge: 24 * 60 * 60, // 24 hours-> jwt expiration
+    updateAge: 5 * 60, // 5 minutes -> session updates
   },
   callbacks: {
     async jwt({ token, user }) {
@@ -42,8 +59,8 @@ export default NextAuth({
       return token;
     },
     async session({ session, token }) {
-      if (token) {
-        session.user.id = token.userId as string;
+      if (token && session.user) {
+        (session.user as any).id = token.userId as string;
       }
       return session;
     },

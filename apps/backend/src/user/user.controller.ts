@@ -4,14 +4,17 @@ import {
   Delete,
   Get,
   HttpException,
+  HttpStatus,
   Logger,
   Param,
   Post,
   Put,
 } from '@nestjs/common';
 import { User as UserModel } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 import {
   CreateUserInput,
+  LoginInput,
   UserDTO,
 } from '../../../../packages/shared-types/src/user';
 import { UserService } from './user.service';
@@ -32,6 +35,26 @@ export class UserController {
       return user;
     }
     return 'User not found';
+  }
+
+  @Post('login')
+  async login(@Body() loginData: LoginInput): Promise<UserModel> {
+    const { email, password } = loginData;
+
+    const user = await this.userService.getUser({
+      email: email,
+    });
+
+    if (!user) {
+      throw new HttpException('Invalid credentials', HttpStatus.UNAUTHORIZED);
+    }
+
+    const isValid = await bcrypt.compare(password, user.passwordHash);
+    if (!isValid) {
+      throw new HttpException('Invalid credentials', HttpStatus.UNAUTHORIZED);
+    }
+
+    return user;
   }
 
   @Post()
