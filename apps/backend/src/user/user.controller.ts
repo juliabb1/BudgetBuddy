@@ -13,11 +13,7 @@ import {
 } from '@nestjs/common';
 import { User as UserModel } from '@prisma/client';
 import bcrypt from 'bcryptjs';
-import {
-  CreateUserInput,
-  LoginInput,
-  UserDTO,
-} from '../../../../packages/shared-types/src/user';
+import { CreateUserInput, LoginInput, UserDTO } from '@repo/shared-types/user';
 import { AuthService } from '../auth/auth.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { UserService } from './user.service';
