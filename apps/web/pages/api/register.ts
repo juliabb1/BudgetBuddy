@@ -60,7 +60,7 @@ export default async function handler(
 
     const passwordHash = await bcrypt.hash(password, 10);
 
-    console.log(`[REGISTER] Calling backend at: ${backendUrl}/user`);
+    // console.log(`[REGISTER] Calling backend at: ${backendUrl}/user`);
     const backendResponse = await fetch(`${backendUrl}/user`, {
       method: "POST",
       headers: {
@@ -68,9 +68,9 @@ export default async function handler(
       },
       body: JSON.stringify({ name, email, passwordHash }),
     });
-    console.log(
-      `[REGISTER] Backend response status: ${backendResponse.status}`
-    );
+    // console.log(
+    //   `[REGISTER] Backend response status: ${backendResponse.status}`
+    // );
 
     if (!backendResponse.ok) {
       const errorBody = await backendResponse.json().catch(() => null);
