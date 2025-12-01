@@ -54,13 +54,13 @@ export function ExpenseForm({ onAddExpense }: ExpenseFormProps) {
       </DialogTrigger>
       <DialogContent className="max-w-md bg-linear-to-br from-emerald-50 to-teal-50">
         <DialogHeader>
-          <DialogTitle className="bg-linear-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+          <DialogTitle className="h-6 bg-linear-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
             📝 Neuen Vertrag hinzufügen
           </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-          <div>
+          <div className="space-y-2">
             <Label htmlFor="name">Vertragsname</Label>
             <Input
               id="name"
@@ -71,7 +71,7 @@ export function ExpenseForm({ onAddExpense }: ExpenseFormProps) {
             />
           </div>
 
-          <div>
+          <div className="space-y-2">
             <Label htmlFor="amount">Betrag (€)</Label>
             <Input
               id="amount"
@@ -84,10 +84,10 @@ export function ExpenseForm({ onAddExpense }: ExpenseFormProps) {
             />
           </div>
 
-          <div>
+          <div className="space-y-2">
             <Label htmlFor="frequency">Zahlungsrhythmus</Label>
             <Select value={frequency} onValueChange={(value) => setFrequency(value as Expense['frequency'])}>
-              <SelectTrigger id="frequency">
+              <SelectTrigger id="frequency" className="w-36">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -99,7 +99,7 @@ export function ExpenseForm({ onAddExpense }: ExpenseFormProps) {
             </Select>
           </div>
 
-          <div>
+          <div className="space-y-2">
             <Label htmlFor="category">Kategorie</Label>
             <Input
               id="category"
@@ -110,7 +110,7 @@ export function ExpenseForm({ onAddExpense }: ExpenseFormProps) {
             />
           </div>
 
-          <div>
+          <div className="space-y-2">
             <Label htmlFor="dueDate">Fälligkeitsdatum (optional)</Label>
             <Input
               id="dueDate"

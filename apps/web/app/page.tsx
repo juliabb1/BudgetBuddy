@@ -79,7 +79,7 @@ export default function Home() {
   };
 
   return (
-    // <ProtectedComponent>
+    <ProtectedComponent>
       <div className="min-h-screen bg-linear-to-br from-emerald-50 via-green-50 to-teal-50 p-4 md:p-8">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-8">
@@ -149,6 +149,6 @@ export default function Home() {
           </Tabs>
         </div>
       </div>
-    // </ProtectedComponent>
+    </ProtectedComponent>
   );
 }
