@@ -1,6 +1,6 @@
 "use client";
 import Image, { type ImageProps } from "next/image";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button } from "../components/ui/button";
 import { signOut } from "next-auth/react";
 import { CostSummary } from "@web/components/CostSummary";
@@ -79,16 +79,16 @@ export default function Home() {
   };
 
   return (
-    <ProtectedComponent>
-      <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50 p-4 md:p-8">
+    // <ProtectedComponent>
+      <div className="min-h-screen bg-linear-to-br from-emerald-50 via-green-50 to-teal-50 p-4 md:p-8">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-4">
-              <div className="bg-white p-3 rounded-2xl shadow-lg transform hover:scale-105 transition-transform">
+              <div className="bg-white p-3 rounded-2xl shadow-sm transform hover:scale-105 transition-transform">
                 <Image src="/window.svg" alt="BudgetBuddy Logo" className="w-16 h-16" width={200} height={200} />
               </div>
               <div>
-                <h1 className="bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+                <h1 className="bg-linear-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
                   BudgetBuddy
                 </h1>
                 <p className="text-slate-700">✨ Verwalten Sie Ihre wiederkehrenden Kosten spielend leicht</p>
@@ -98,7 +98,7 @@ export default function Home() {
               {currentUser && (
                 <div className="text-right hidden md:block">
                   <p className="text-slate-700">Willkommen zurück,</p>
-                  <p className="bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">{currentUser.name}</p>
+                  <p className="bg-linear-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">{currentUser.name}</p>
                 </div>
               )}
               <Button
@@ -126,11 +126,11 @@ export default function Home() {
           </div>
 
           <Tabs defaultValue="list" className="w-full">
-            <TabsList className="grid w-full max-w-md grid-cols-2 bg-white/60 backdrop-blur-sm p-1 border border-white shadow-lg">
-              <TabsTrigger value="list" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-600 data-[state=active]:to-teal-600 data-[state=active]:text-white">
+            <TabsList className="grid w-full max-w-md grid-cols-2 bg-white/60 backdrop-blur-sm p-1 border border-white shadow-sm">
+              <TabsTrigger value="list" className="data-[state=active]:bg-linear-to-r data-[state=active]:from-emerald-600 data-[state=active]:to-teal-600 data-[state=active]:text-white">
                 📋 Vertragsliste
               </TabsTrigger>
-              <TabsTrigger value="chart" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-600 data-[state=active]:to-teal-600 data-[state=active]:text-white">
+              <TabsTrigger value="chart" className="data-[state=active]:bg-linear-to-r data-[state=active]:from-emerald-600 data-[state=active]:to-teal-600 data-[state=active]:text-white">
                 📊 Diagramm
               </TabsTrigger>
             </TabsList>
@@ -149,6 +149,6 @@ export default function Home() {
           </Tabs>
         </div>
       </div>
-    </ProtectedComponent>
+    // </ProtectedComponent>
   );
 }

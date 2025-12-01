@@ -5,6 +5,7 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { FileText, Upload, Download, Trash2, Eye } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
+import Image from 'next/image';
 
 export interface Document {
   id: string;
@@ -69,7 +70,7 @@ export function DocumentManager({ documents, onAddDocument, onDeleteDocument }: 
           <span className="text-2xl">📁</span> Dokumente & Unterlagen
         </h3>
         <Label htmlFor="file-upload" className="cursor-pointer">
-          <Button type="button" size="sm" disabled={isUploading} asChild className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
+          <Button type="button" size="sm" disabled={isUploading} asChild className="bg-linear-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
             <span>
               <Upload className="w-4 h-4 mr-2" />
               {isUploading ? 'Lädt...' : 'Hochladen'}
@@ -86,7 +87,7 @@ export function DocumentManager({ documents, onAddDocument, onDeleteDocument }: 
       </div>
 
       {documents.length === 0 ? (
-        <Card className="p-8 text-center border-2 border-dashed border-purple-300 bg-gradient-to-br from-purple-50 to-pink-50">
+        <Card className="p-8 text-center border-2 border-dashed border-purple-300 bg-linear-to-br from-purple-50 to-pink-50">
           <div className="text-6xl mb-3">📄</div>
           <p className="text-slate-600 text-sm mb-1">Noch keine Dokumente hochgeladen</p>
           <p className="text-slate-500 text-xs">
@@ -99,8 +100,8 @@ export function DocumentManager({ documents, onAddDocument, onDeleteDocument }: 
             <Card key={doc.id} className="p-4 bg-white/80 backdrop-blur-sm hover:shadow-md transition-all border border-purple-100">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <div className="bg-gradient-to-br from-purple-500 to-pink-500 p-2 rounded-lg">
-                    <FileText className="w-5 h-5 text-white flex-shrink-0" />
+                  <div className="bg-linear-to-br from-purple-500 to-pink-500 p-2 rounded-lg">
+                    <FileText className="w-5 h-5 text-white shrink-0" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm text-slate-900 truncate">{doc.name}</div>
@@ -151,7 +152,7 @@ export function DocumentManager({ documents, onAddDocument, onDeleteDocument }: 
           </DialogHeader>
           {previewDoc && (
             <div className="mt-4">
-              <img 
+              <Image 
                 src={previewDoc.data} 
                 alt={previewDoc.name}
                 className="w-full h-auto rounded-lg"

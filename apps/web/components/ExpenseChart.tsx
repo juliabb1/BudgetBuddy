@@ -59,7 +59,7 @@ export function ExpenseChart({ expenses }: ExpenseChartProps) {
 
   if (expenses.length === 0) {
     return (
-      <Card className="p-12 text-center bg-gradient-to-br from-emerald-50 to-teal-50 border-2 border-dashed border-emerald-300">
+      <Card className="p-12 text-center bg-linear-to-br from-emerald-50 to-teal-50 border-2 border-dashed border-emerald-300">
         <div className="text-6xl mb-4">📊</div>
         <div className="text-slate-600 mb-2">Keine Daten verfügbar</div>
         <p className="text-slate-500 text-sm">
@@ -71,10 +71,10 @@ export function ExpenseChart({ expenses }: ExpenseChartProps) {
 
   return (
     <div className="space-y-6">
-      <Card className="p-6 bg-white/80 backdrop-blur-sm border-white shadow-xl">
+      <Card className="p-6 bg-white/80 backdrop-blur-sm border-white shadow-sm">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
           <div>
-            <h2 className="mb-2 bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+            <h2 className="mb-2 bg-linear-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
               📊 Kostenverteilung nach Kategorie
             </h2>
             <p className="text-slate-600 text-sm">💰 Monatliche Durchschnittskosten</p>
@@ -85,7 +85,7 @@ export function ExpenseChart({ expenses }: ExpenseChartProps) {
               variant={chartType === 'bar' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setChartType('bar')}
-              className={chartType === 'bar' ? 'bg-gradient-to-r from-emerald-600 to-teal-600' : 'hover:border-emerald-300'}
+              className={chartType === 'bar' ? 'bg-linear-to-r from-emerald-600 to-teal-600' : 'shadow-sm hover:shadow-md hover:border-emerald-300'}
             >
               <BarChart3 className="w-4 h-4 mr-2" />
               Balken
@@ -94,7 +94,7 @@ export function ExpenseChart({ expenses }: ExpenseChartProps) {
               variant={chartType === 'pie' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setChartType('pie')}
-              className={chartType === 'pie' ? 'bg-gradient-to-r from-emerald-600 to-teal-600' : 'hover:border-emerald-300'}
+              className={chartType === 'pie' ? 'bg-linear-to-r from-emerald-600 to-teal-600' : 'shadow-sm hover:shadow-md hover:border-emerald-300'}
             >
               <PieChartIcon className="w-4 h-4 mr-2" />
               Kreis
@@ -159,7 +159,7 @@ export function ExpenseChart({ expenses }: ExpenseChartProps) {
 
       <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
         {categoryData.map((category, index) => (
-          <Card key={category.category} className="p-5 bg-gradient-to-br from-white to-slate-50 hover:shadow-lg transition-all border-white">
+          <Card key={category.category} className="p-5 bg-linear-to-br from-white to-slate-50 hover:shadow-md transition-all border-white">
             <div className="flex items-center gap-3 mb-3">
               <div 
                 className="w-3 h-3 rounded-full shadow-md" 
@@ -167,7 +167,7 @@ export function ExpenseChart({ expenses }: ExpenseChartProps) {
               />
               <div className="text-sm text-slate-600">🏷️ {category.category}</div>
             </div>
-            <div className="text-xl bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+            <div className="text-xl bg-linear-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
               {category.monthlyAmount.toFixed(2)} €
             </div>
             <div className="text-xs text-slate-500">💵 pro Monat</div>

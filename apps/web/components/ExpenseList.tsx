@@ -95,19 +95,19 @@ export function ExpenseList({ expenses, onDeleteExpense, onUpdateExpense }: Expe
   const getFrequencyColor = (frequency: Expense['frequency']) => {
     switch (frequency) {
       case 'monthly':
-        return 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white';
+        return 'bg-linear-to-r from-emerald-500 to-teal-500 text-white';
       case 'quarterly':
-        return 'bg-gradient-to-r from-green-500 to-emerald-500 text-white';
+        return 'bg-linear-to-r from-green-500 to-emerald-500 text-white';
       case 'semi-annually':
-        return 'bg-gradient-to-r from-teal-500 to-cyan-500 text-white';
+        return 'bg-linear-to-r from-teal-500 to-cyan-500 text-white';
       case 'annually':
-        return 'bg-gradient-to-r from-lime-500 to-green-500 text-white';
+        return 'bg-linear-to-r from-lime-500 to-green-500 text-white';
     }
   };
 
   if (expenses.length === 0) {
     return (
-      <Card className="p-12 text-center bg-gradient-to-br from-emerald-50 to-teal-50 border-2 border-dashed border-emerald-300">
+      <Card className="p-12 text-center bg-linear-to-br from-emerald-50 to-teal-50 border-2 border-dashed border-emerald-300">
         <div className="text-6xl mb-4">📋</div>
         <div className="text-slate-600 mb-2">Keine Verträge vorhanden</div>
         <p className="text-slate-500 text-sm">
@@ -131,13 +131,13 @@ export function ExpenseList({ expenses, onDeleteExpense, onUpdateExpense }: Expe
         const cardColor = cardColors[index % cardColors.length];
         
         return (
-        <Card key={expense.id} className={`hover:shadow-xl transition-all duration-300 bg-gradient-to-br ${cardColor} border-white`}>
+        <Card key={expense.id} className={`shadow-sm hover:shadow-md transition-all duration-300 bg-linear-to-br ${cardColor} border-white`}>
           <div className="p-6">
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-2">
                   <h3>{expense.name}</h3>
-                  <Badge className={`${getFrequencyColor(expense.frequency)} shadow-md`}>
+                  <Badge className={`${getFrequencyColor(expense.frequency)} shadow-sm`}>
                     {getFrequencyLabel(expense.frequency)}
                   </Badge>
                   {expense.documents.length > 0 && (
@@ -151,7 +151,7 @@ export function ExpenseList({ expenses, onDeleteExpense, onUpdateExpense }: Expe
                 <div className="grid md:grid-cols-3 gap-4 mt-4">
                   <div className="bg-white/60 backdrop-blur-sm p-3 rounded-xl">
                     <div className="text-sm text-slate-600 mb-1">💰 Betrag</div>
-                    <div className="text-lg bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+                    <div className="text-lg bg-linear-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
                       {expense.amount.toFixed(2)} €
                     </div>
                   </div>

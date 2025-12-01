@@ -77,9 +77,9 @@ export function CostSummary({ expenses }: CostSummaryProps) {
   ];
 
   return (
-    <Card className="p-6 bg-white/80 backdrop-blur-sm border-white shadow-xl">
+    <Card className="p-6 bg-white/80 backdrop-blur-sm border-white shadow-sm">
       <div className="mb-6">
-        <h2 className="mb-2 bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+        <h2 className="mb-2 bg-linear-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
           💰 Gesamtkostenübersicht
         </h2>
         <p className="text-slate-600">
@@ -99,7 +99,7 @@ export function CostSummary({ expenses }: CostSummaryProps) {
               className={`
                 relative overflow-hidden rounded-2xl p-6 text-left transition-all duration-300
                 ${isSelected 
-                  ? `bg-gradient-to-br ${timeFrame.gradient} text-white shadow-2xl scale-105 transform` 
+                  ? `bg-linear-to-br ${timeFrame.gradient} text-white shadow-xl scale-105 transform` 
                   : `${timeFrame.bgLight} hover:shadow-lg border-2 border-transparent hover:border-${timeFrame.gradient}`
                 }
               `}
@@ -132,7 +132,7 @@ export function CostSummary({ expenses }: CostSummaryProps) {
         })}
       </div>
 
-      <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-2xl p-6 border border-slate-200">
+      <div className="bg-linear-to-br from-slate-50 to-slate-100 rounded-2xl p-6 border border-slate-200">
         <div className="flex items-center justify-between mb-4">
           <h3 className="flex items-center gap-2">
             📊 Detaillierte Aufschlüsselung
@@ -183,7 +183,7 @@ export function CostSummary({ expenses }: CostSummaryProps) {
                   <div className="text-sm text-slate-500">🏷️ {expense.category}</div>
                 </div>
                 <div className="text-right">
-                  <div className="text-lg bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+                  <div className="text-lg bg-linear-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
                     {displayAmount.toFixed(2)} €
                   </div>
                   <div className="text-xs text-slate-500">
@@ -199,11 +199,11 @@ export function CostSummary({ expenses }: CostSummaryProps) {
         </div>
 
         <div className="mt-6 pt-4 border-t-2 border-dashed border-emerald-200">
-          <div className="flex items-center justify-between bg-gradient-to-r from-emerald-50 to-teal-50 p-4 rounded-xl">
+          <div className="flex items-center justify-between bg-linear-to-r from-emerald-50 to-teal-50 p-4 rounded-xl">
             <span className="text-slate-700 flex items-center gap-2">
               💵 Monatlich zurücklegen:
             </span>
-            <span className="text-2xl bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+            <span className="text-2xl bg-linear-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
               {monthlyTotal.toFixed(2)} €
             </span>
           </div>

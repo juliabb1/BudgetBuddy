@@ -84,17 +84,17 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md shadow-2xl border-white/60 bg-white/80 backdrop-blur-sm">
+    <div className="min-h-screen bg-linear-to-br from-emerald-50 via-green-50 to-teal-50 flex items-center justify-center p-4">
+      <Card className="w-full max-w-md shadow-xl border-white/60 bg-white/80 backdrop-blur-sm">
         <CardHeader className="space-y-4 text-center">
-          <CardTitle className="bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+          <CardTitle className="bg-linear-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
             Konto erstellen
           </CardTitle>
           <CardDescription>
             Registrieren Sie sich und starten Sie mit BudgetBuddy
           </CardDescription>
         </CardHeader>
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} className="space-y-4">
           <CardContent className="space-y-4">
             {error && (
               <Alert variant="destructive">
@@ -165,7 +165,7 @@ export default function RegisterPage() {
           <CardFooter className="flex flex-col space-y-4">
             <Button
               type="submit"
-              className="w-full bg-gradient-to-r from-emerald-600 to-teal-600"
+              className="w-full bg-linear-to-r from-emerald-600 to-teal-600"
             >
               <UserPlus className="w-4 h-4 mr-2" /> Registrieren
             </Button>

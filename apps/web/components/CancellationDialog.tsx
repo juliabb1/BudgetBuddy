@@ -91,15 +91,15 @@ Unterschrift`;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-gradient-to-br from-orange-50 to-amber-50">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-linear-to-br from-orange-50 to-amber-50">
         <DialogHeader>
-          <DialogTitle className="bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent flex items-center gap-2">
+          <DialogTitle className="bg-linear-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent flex items-center gap-2">
             <span className="text-3xl">✍️</span> Vertrag kündigen: {expense.name}
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-6 mt-4">
-          <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-4 rounded-xl border border-blue-200">
+          <div className="bg-linear-to-r from-blue-50 to-cyan-50 p-4 rounded-xl border border-blue-200">
             <p className="text-sm text-slate-700">
               💡 Füllen Sie die folgenden Felder aus, um ein Kündigungsschreiben zu generieren. 
               Sie können das Schreiben dann kopieren, herunterladen und an den Anbieter senden.
@@ -194,7 +194,7 @@ Unterschrift`;
             />
           </div>
 
-          <div className="bg-gradient-to-r from-amber-50 to-orange-50 p-4 rounded-xl border border-amber-200">
+          <div className="bg-linear-to-r from-amber-50 to-orange-50 p-4 rounded-xl border border-amber-200">
             <p className="text-sm text-slate-700">
               <strong className="text-amber-700">⚠️ Hinweis:</strong> Bitte prüfen Sie die Kündigungsfrist in Ihrem Vertrag 
               und versenden Sie das Kündigungsschreiben rechtzeitig per Einschreiben oder 
@@ -216,7 +216,7 @@ Unterschrift`;
               variant="destructive"
               onClick={handleConfirm}
               disabled={!senderName || !senderAddress || !senderCity}
-              className="bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700"
+              className="bg-linear-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700"
             >
               🗑️ Vertrag kündigen & entfernen
             </Button>
