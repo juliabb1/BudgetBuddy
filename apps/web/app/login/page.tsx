@@ -34,7 +34,7 @@ export default function LoginPage() {
     });
 
     if (res?.error) {
-      setError(res.error);
+      setError("Anmeldung fehlgeschlagen. Prüfen Sie Ihre Eingaben.");
     } else {
       router.push("/"); // nach Login umleiten
     }
