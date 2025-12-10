@@ -13,10 +13,11 @@ type Props = Omit<ImageProps, "src"> & {
 
 export default function Home() {
   const [text, setText] = useState("noch kein Content");
+  const [userId, setUserId] = useState("");
 
   const getUser = async () => {
     axios
-      .get("/user/abc")
+      .get(`/user/${userId}`)
       .then((res) =>
         setText(
           res ? "User gefunden: " + res.data.name : "User existiert nicht"
@@ -28,12 +29,14 @@ export default function Home() {
   const createUser = async () => {
     axios
       .post("/user", {
-        id: "abc",
         name: "Tom",
         passwordHash: "hashedpassword",
-        roleId: "user",
+        email: "b@b.com",
       })
-      .then((res) => setText("Neuer User: " + res.data.name))
+      .then((res) => {
+        setText("Neuer User: " + res.data.name);
+        setUserId(res.data.userId);
+      })
       .catch((err) => {
         setText("Fehler beim Erstellen des Users -- User existiert bereits");
         console.error(err);
@@ -42,7 +45,7 @@ export default function Home() {
 
   const deleteUser = async () => {
     axios
-      .delete("/user/abc")
+      .delete(`/user/${userId}`)
       .then((res) => setText("User gelöscht: " + res.data.name))
       .catch((err) => {
         setText("Fehler beim Löschen des Users -- User nicht gefunden");

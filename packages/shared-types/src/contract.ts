@@ -4,7 +4,7 @@ enum Cycle {
   MONTHLY,
   QUARTERLY,
   HALF_YEARLY,
-  YEARLY
+  YEARLY,
 }
 
 enum Category {
@@ -18,7 +18,7 @@ enum Category {
   HEALTH,
   EDUCATION,
   SUBSCRIPTION,
-  OTHER
+  OTHER,
 }
 
 export const ContractDTO = z.object({
@@ -31,7 +31,7 @@ export const ContractDTO = z.object({
   endDate: z.date().nullable().optional(),
   isActive: z.boolean(),
   debitDayOfMonth: z.number().min(1).max(28),
-  category: z.enum(Category)
-})
+  category: z.enum(Category),
+});
 
 export type ContractDTO = z.infer<typeof ContractDTO>;
