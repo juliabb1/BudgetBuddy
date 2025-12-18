@@ -1,14 +1,13 @@
-import { Cycle, CycleSchema } from '@repo/shared-types/contract';
-import { Contract } from '@web/app/page';
+import { ContractDTO, Cycle, CycleSchema } from '@repo/shared-types/contract';
 import { Calendar, TrendingUp, Wallet } from 'lucide-react';
 import { useState } from 'react';
 import { Card } from './ui/card';
 
 interface CostSummaryProps {
-  contracts: Contract[];
+  contracts: ContractDTO[];
 }
 
-type TimeFrame = Contract['cycle'];
+type TimeFrame = ContractDTO['cycle'];
 
 export function CostSummary({ contracts }: CostSummaryProps) {
   const [selectedTimeFrame, setSelectedTimeFrame] = useState<Cycle>(
@@ -165,7 +164,9 @@ export function CostSummary({ contracts }: CostSummaryProps) {
 
         <div className="space-y-3">
           {contracts.map((contract, index) => {
-            const key = contract.id ? contract.id : `contract-${index}`;
+            const key = contract.contractId
+              ? contract.contractId
+              : `contract-${index}`;
 
             const price = Number(contract.price) || 0;
             let monthlyAmount = 0;

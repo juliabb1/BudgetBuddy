@@ -1,21 +1,21 @@
-import { Card } from './ui/card';
+import { ContractDTO } from '@repo/shared-types/contract';
+import { BarChart3, PieChart as PieChartIcon } from 'lucide-react';
+import { useState } from 'react';
 import {
-  BarChart,
   Bar,
-  PieChart,
-  Pie,
+  BarChart,
+  CartesianGrid,
   Cell,
+  Legend,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
 } from 'recharts';
-import { useState } from 'react';
 import { Button } from './ui/button';
-import { BarChart3, PieChart as PieChartIcon } from 'lucide-react';
-import { ContractDTO } from '@repo/shared-types/contract';
+import { Card } from './ui/card';
 
 interface ContractChartProps {
   contracts: ContractDTO[];

@@ -1,6 +1,6 @@
+import { CreateContractDto } from '@repo/shared-types/contract';
 import console from 'console';
 import { NextRequest, NextResponse } from 'next/server';
-import { CreateContractDto } from '@repo/shared-types/contract';
 
 const CreateContractSchema = CreateContractDto;
 
@@ -21,8 +21,8 @@ export async function POST(req: NextRequest) {
     // Convert string dates to Date objects for backend
     const contractData = {
       ...dto,
-      startDate: new Date(dto.startDate),
-      endDate: dto.endDate ? new Date(dto.endDate) : undefined,
+      startDate: dto.startDate,
+      endDate: dto.endDate,
     };
 
     const backendRes = await fetch(

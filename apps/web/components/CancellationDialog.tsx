@@ -5,20 +5,20 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
 import { FileDown, Copy, Check } from 'lucide-react';
-import { Contract } from '@web/app/page';
+import { ContractDTO } from '@repo/shared-types/contract';
 
 interface CancellationDialogProps {
-  contract: Contract;
+  contract: ContractDTO;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirmCancellation: (contractId: string) => void;
 }
 
-export function CancellationDialog({ 
-  contract, 
-  open, 
+export function CancellationDialog({
+  contract,
+  open,
   onOpenChange,
-  onConfirmCancellation 
+  onConfirmCancellation,
 }: CancellationDialogProps) {
   const [senderName, setSenderName] = useState('');
   const [senderAddress, setSenderAddress] = useState('');
@@ -29,7 +29,7 @@ export function CancellationDialog({
   const today = new Date().toLocaleDateString('de-DE', {
     year: 'numeric',
     month: 'long',
-    day: 'numeric'
+    day: 'numeric',
   });
 
   const generateCancellationLetter = () => {
@@ -83,8 +83,12 @@ Unterschrift`;
   };
 
   const handleConfirm = () => {
-    if (window.confirm(`Möchten Sie den Vertrag "${contract.name}" wirklich kündigen und aus der Liste entfernen?`)) {
-      onConfirmCancellation(contract.id);
+    if (
+      window.confirm(
+        `Möchten Sie den Vertrag "${contract.name}" wirklich kündigen und aus der Liste entfernen?`,
+      )
+    ) {
+      onConfirmCancellation(contract.contractId);
       onOpenChange(false);
     }
   };
@@ -94,15 +98,17 @@ Unterschrift`;
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-linear-to-br from-orange-50 to-amber-50">
         <DialogHeader>
           <DialogTitle className="bg-linear-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent flex items-center gap-2">
-            <span className="text-3xl">✍️</span> Vertrag kündigen: {contract.name}
+            <span className="text-3xl">✍️</span> Vertrag kündigen:{' '}
+            {contract.name}
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-6 mt-4">
           <div className="bg-linear-to-r from-blue-50 to-cyan-50 p-4 rounded-xl border border-blue-200">
             <p className="text-sm text-slate-700">
-              💡 Füllen Sie die folgenden Felder aus, um ein Kündigungsschreiben zu generieren. 
-              Sie können das Schreiben dann kopieren, herunterladen und an den Anbieter senden.
+              💡 Füllen Sie die folgenden Felder aus, um ein Kündigungsschreiben
+              zu generieren. Sie können das Schreiben dann kopieren,
+              herunterladen und an den Anbieter senden.
             </p>
           </div>
 
@@ -160,7 +166,11 @@ Unterschrift`;
                   size="sm"
                   onClick={handleCopy}
                   disabled={!senderName || !senderAddress || !senderCity}
-                  className={copied ? 'border-green-300 bg-green-50' : 'hover:border-purple-300'}
+                  className={
+                    copied
+                      ? 'border-green-300 bg-green-50'
+                      : 'hover:border-purple-300'
+                  }
                 >
                   {copied ? (
                     <>
@@ -196,9 +206,10 @@ Unterschrift`;
 
           <div className="bg-linear-to-r from-amber-50 to-orange-50 p-4 rounded-xl border border-amber-200">
             <p className="text-sm text-slate-700">
-              <strong className="text-amber-700">⚠️ Hinweis:</strong> Bitte prüfen Sie die Kündigungsfrist in Ihrem Vertrag 
-              und versenden Sie das Kündigungsschreiben rechtzeitig per Einschreiben oder 
-              E-Mail mit Lesebestätigung.
+              <strong className="text-amber-700">⚠️ Hinweis:</strong> Bitte
+              prüfen Sie die Kündigungsfrist in Ihrem Vertrag und versenden Sie
+              das Kündigungsschreiben rechtzeitig per Einschreiben oder E-Mail
+              mit Lesebestätigung.
             </p>
           </div>
 

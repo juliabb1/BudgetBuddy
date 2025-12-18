@@ -1,4 +1,14 @@
-import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Put,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { CreateContractDto } from '@repo/shared-types/contract';
 import type { Request } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -46,6 +56,45 @@ export class ContractController {
       });
     } catch (error) {
       throw new Error('Error creating contract: ' + (error as Error).message);
+    }
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Put(':id')
+  async updateContract(
+    @Param('id') contractId: string,
+    @Body() contract: Partial<CreateContractDto>,
+  ) {
+    try {
+      return this.contractService.updateContract(contractId, {
+        ...(contract.name !== undefined && { name: contract.name }),
+        ...(contract.price !== undefined && { price: contract.price }),
+        ...(contract.cycle !== undefined && { cycle: contract.cycle }),
+        ...(contract.startDate !== undefined && {
+          startDate: contract.startDate,
+        }),
+        ...(contract.endDate !== undefined && { endDate: contract.endDate }),
+        ...(contract.debitDayOfMonth !== undefined && {
+          debitDayOfMonth: contract.debitDayOfMonth,
+        }),
+        ...(contract.category !== undefined && { category: contract.category }),
+        ...(contract.isActive !== undefined && { isActive: contract.isActive }),
+        ...(contract.documents !== undefined && {
+          documents: contract.documents,
+        }),
+      });
+    } catch (error) {
+      throw new Error('Error updating contract: ' + (error as Error).message);
+    }
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete(':id')
+  async deleteContract(@Param('id') contractId: string) {
+    try {
+      return this.contractService.deleteContract(contractId);
+    } catch (error) {
+      throw new Error('Error deleting contract: ' + (error as Error).message);
     }
   }
 }

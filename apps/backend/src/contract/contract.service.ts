@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
 import { Contract, Prisma } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class ContractService {
@@ -25,5 +25,22 @@ export class ContractService {
     return this.prisma.contract.create({ data: contract });
   }
 
-  // Optional: weitere Methoden (findAll, findByUser, delete, etc.)
+  async updateContract(
+    contractId: string,
+    contract: Prisma.ContractUpdateInput,
+  ): Promise<Contract> {
+    this.logger.log('updateContract');
+
+    return this.prisma.contract.update({
+      where: { contractId },
+      data: contract,
+    });
+  }
+
+  async deleteContract(contractId: string): Promise<Contract> {
+    this.logger.log('deleteContract');
+    return this.prisma.contract.delete({
+      where: { contractId },
+    });
+  }
 }

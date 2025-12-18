@@ -1,3 +1,4 @@
+import { ContractDTO, CreateContractDto } from '@repo/shared-types/contract';
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from './ui/button';
@@ -17,9 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from './ui/select';
-import { ContractDTO } from '@repo/shared-types/contract';
 
-type ContractFormData = Omit<ContractDTO, 'id' | 'userId'>;
+type ContractFormData = CreateContractDto;
 
 interface ContractFormProps {
   onAddContract: (contract: ContractFormData) => void;
