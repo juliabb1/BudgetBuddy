@@ -1,81 +1,181 @@
-"use client";
-import Image, { type ImageProps } from "next/image";
-import { useState } from "react";
-import { Button } from "../components/ui/button";
-import { signOut } from "next-auth/react";
-import { CostSummary } from "@web/components/CostSummary";
-import { ExpenseList } from "@web/components/ExpenseList";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@web/components/ui/tabs";
-import { ExpenseChart } from "@web/components/ExpenseChart";
-import { LogOut } from "lucide-react";
-import { ExpenseForm } from "@web/components/ExpenseForm";
-import { ProtectedComponent, useAccessToken } from "@web/lib/auth";
+'use client';
+import {
+  Category,
+  CategorySchema,
+  ContractDTO,
+  Cycle,
+  CycleSchema,
+} from '@repo/shared-types/contract';
+import { ContractChart } from '@web/components/ContractChart';
+import { ContractForm } from '@web/components/ContractForm';
+import { ContractList } from '@web/components/ContractList';
+import { CostSummary } from '@web/components/CostSummary';
+import { Document } from '@web/components/DocumentManager';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@web/components/ui/tabs';
+import { ProtectedComponent, useAccessToken } from '@web/lib/auth';
+import { LogOut } from 'lucide-react';
+import { signOut } from 'next-auth/react';
+import Image from 'next/image';
+import { useEffect, useState } from 'react';
+import { Button } from '../components/ui/button';
 
-export interface Expense {
-  id: string;
-  name: string;
-  amount: number;
-  frequency: 'monthly' | 'quarterly' | 'semi-annually' | 'annually';
-  category: string;
-  dueDate?: string;
-  documents: Document[];
-  uploadDate?: string;
-}
-
-type Props = Omit<ImageProps, "src"> & {
-  srcLight: string;
-  srcDark: string;
-};
+const mockContracts: ContractDTO[] = [
+  {
+    id: '1',
+    name: 'Kfz-Versicherung',
+    price: 780,
+    cycle: CycleSchema.parse('MONTHLY'),
+    startDate: new Date('2024-03-15'),
+    debitDayOfMonth: 1,
+    category: CategorySchema.parse('INSURANCE'),
+    isActive: true,
+    documents: [
+      {
+        id: 'd1',
+        name: 'Versicherungsvertrag.pdf',
+        data: 'data:application/pdf;base64,JVBERi0xLjQKJcfs...',
+        type: 'application/pdf',
+        uploadDate: new Date().toISOString(),
+      },
+    ],
+    userId: 'cmihd8btq0000ekywb3e8xr62',
+  },
+  {
+    id: '2',
+    name: 'Kfz-Steuer',
+    price: 156,
+    cycle: CycleSchema.parse('MONTHLY'),
+    category: CategorySchema.parse('INSURANCE'),
+    startDate: new Date('2024-03-15'),
+    debitDayOfMonth: 1,
+    isActive: true,
+    documents: [],
+    userId: 'cmihd8btq0000ekywb3e8xr62',
+  },
+  {
+    id: '3',
+    name: 'Netflix',
+    price: 17.99,
+    cycle: CycleSchema.parse('MONTHLY'),
+    category: CategorySchema.parse('INSURANCE'),
+    startDate: new Date('2024-03-15'),
+    debitDayOfMonth: 1,
+    isActive: true,
+    documents: [],
+    userId: 'cmihd8btq0000ekywb3e8xr62',
+  },
+];
 
 export default function Home() {
-  const [currentUser, setCurrentUser] = useState<{ name: string; email: string } | null>(useAccessToken());
+  const [currentUser, setCurrentUser] = useState<{
+    name: string;
+    email: string;
+  } | null>();
+  const [contracts, setContracts] = useState<ContractDTO[]>(mockContracts);
+  const token = useAccessToken();
 
-  const [expenses, setExpenses] = useState<Expense[]>([
-    {
-      id: '1',
-      name: 'Kfz-Versicherung',
-      amount: 780,
-      frequency: 'annually',
-      category: 'Versicherung',
-      dueDate: '2025-03-15',
-      documents: []
-    },
-    {
-      id: '2',
-      name: 'Kfz-Steuer',
-      amount: 156,
-      frequency: 'annually',
-      category: 'Steuern',
-      dueDate: '2025-05-01',
-      documents: []
-    },
-    {
-      id: '3',
-      name: 'Netflix',
-      amount: 17.99,
-      frequency: 'monthly',
-      category: 'Unterhaltung',
-      dueDate: '2025-10-25',
-      documents: []
-    }
-  ]);
+  useEffect(() => {
+    console.log('Access Token in Home page:', token);
+    if (!token) return; // Wait until token is available
 
-  const addExpense = (expense: Omit<Expense, 'id'>) => {
-    const newExpense = {
-      ...expense,
-      id: Date.now().toString()
+    const fetchContracts = async () => {
+      try {
+        const res = await fetch(`/api/contracts/me`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.message || 'Fehler beim Laden der Verträge');
+        }
+        const data = await res.json();
+        console.log(data);
+        setContracts(data);
+      } catch (err: any) {
+        console.log(err.message ?? 'Unbekannter Fehler');
+      }
     };
-    setExpenses([...expenses, newExpense]);
+
+    fetchContracts();
+  }, [token]);
+
+  const addContract = async (contract: Omit<ContractDTO, 'id' | 'userId'>) => {
+    const newContract = {
+      ...contract,
+      id: Date.now().toString(),
+    };
+
+    console.log('Creating contract via API route:', contract);
+
+    try {
+      const res = await fetch('/api/contracts', {
+        method: 'POST',
+        credentials: 'include', // REQUIRED
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: contract.name,
+          price: contract.price,
+          cycle: contract.cycle,
+          startDate: contract.startDate,
+          debitDayOfMonth: contract.debitDayOfMonth,
+          category: contract.category,
+          isActive: contract.isActive,
+          documents: contract.documents,
+        }),
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.message || 'Fehler beim Erstellen des Vertrags');
+      }
+
+      const createdContract = await res.json();
+      console.log('Contract created:', createdContract);
+
+      // Refresh contracts from backend via API route
+      const contractsRes = await fetch('/api/contracts/me', {
+        method: 'GET',
+        credentials: 'include', // REQUIRED
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (contractsRes.ok) {
+        const updatedContracts = await contractsRes.json();
+        setContracts(updatedContracts);
+      }
+      // Contract creation successful, contracts refreshed
+    } catch (err: any) {
+      console.log(err.message ?? 'Unbekannter Fehler');
+    }
   };
 
-    const deleteExpense = (id: string) => {
-    setExpenses(expenses.filter(exp => exp.id !== id));
+  const deleteContract = (id: string) => {
+    setContracts(contracts.filter((exp) => exp.id !== id));
   };
 
-  const updateExpense = (id: string, updatedExpense: Omit<Expense, 'id'>) => {
-    setExpenses(expenses.map(exp => 
-      exp.id === id ? { ...updatedExpense, id } : exp
-    ));
+  const updateContract = (
+    id: string,
+    updatedContract: Omit<ContractDTO, 'id'>,
+  ) => {
+    setContracts(
+      contracts.map((exp) =>
+        exp.id === id ? { ...updatedContract, id } : exp,
+      ),
+    );
   };
 
   return (
@@ -85,24 +185,34 @@ export default function Home() {
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-4">
               <div className="bg-white p-3 rounded-2xl shadow-sm transform hover:scale-105 transition-transform">
-                <Image src="/window.svg" alt="BudgetBuddy Logo" className="w-16 h-16" width={200} height={200} />
+                <Image
+                  src="/window.svg"
+                  alt="BudgetBuddy Logo"
+                  className="w-16 h-16"
+                  width={200}
+                  height={200}
+                />
               </div>
               <div>
                 <h1 className="bg-linear-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
                   BudgetBuddy
                 </h1>
-                <p className="text-slate-700">✨ Verwalten Sie Ihre wiederkehrenden Kosten spielend leicht</p>
+                <p className="text-slate-700">
+                  ✨ Verwalten Sie Ihre wiederkehrenden Kosten spielend leicht
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-4">
               {currentUser && (
                 <div className="text-right hidden md:block">
                   <p className="text-slate-700">Willkommen zurück,</p>
-                  <p className="bg-linear-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">{currentUser.name}</p>
+                  <p className="bg-linear-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+                    {currentUser.name}
+                  </p>
                 </div>
               )}
               <Button
-                onClick={() => signOut}
+                onClick={() => signOut()}
                 variant="outline"
                 className="border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700"
               >
@@ -119,32 +229,38 @@ export default function Home() {
                   🎯 Behalten Sie alle wiederkehrenden Ausgaben im Blick
                 </p>
               </div>
-              <ExpenseForm onAddExpense={addExpense} />
+              <ContractForm onAddContract={addContract} />
             </div>
-            
-            <CostSummary expenses={expenses} />
+
+            <CostSummary contracts={contracts} />
           </div>
 
           <Tabs defaultValue="list" className="w-full">
             <TabsList className="grid w-full max-w-md grid-cols-2 bg-white/60 backdrop-blur-sm p-1 border border-white shadow-sm">
-              <TabsTrigger value="list" className="data-[state=active]:bg-linear-to-r data-[state=active]:from-emerald-600 data-[state=active]:to-teal-600 data-[state=active]:text-white">
+              <TabsTrigger
+                value="list"
+                className="data-[state=active]:bg-linear-to-r data-[state=active]:from-emerald-600 data-[state=active]:to-teal-600 data-[state=active]:text-white"
+              >
                 📋 Vertragsliste
               </TabsTrigger>
-              <TabsTrigger value="chart" className="data-[state=active]:bg-linear-to-r data-[state=active]:from-emerald-600 data-[state=active]:to-teal-600 data-[state=active]:text-white">
+              <TabsTrigger
+                value="chart"
+                className="data-[state=active]:bg-linear-to-r data-[state=active]:from-emerald-600 data-[state=active]:to-teal-600 data-[state=active]:text-white"
+              >
                 📊 Diagramm
               </TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value="list" className="mt-6">
-              <ExpenseList 
-                expenses={expenses} 
-                onDeleteExpense={deleteExpense}
-                onUpdateExpense={updateExpense}
+              <ContractList
+                contracts={contracts}
+                onDeleteContract={deleteContract}
+                onUpdateContract={updateContract}
               />
             </TabsContent>
-            
+
             <TabsContent value="chart" className="mt-6">
-              <ExpenseChart expenses={expenses} />
+              <ContractChart contracts={contracts} />
             </TabsContent>
           </Tabs>
         </div>
