@@ -24,7 +24,7 @@ export const CategorySchema = z.enum([
 export type Category = z.infer<typeof CategorySchema>;
 
 export const ContractDTO = z.object({
-  id: z.string(),
+  contractId: z.string(),
   userId: z.string(),
   name: z.string(),
   price: z.number(),
@@ -45,14 +45,25 @@ export const ContractDTO = z.object({
   ),
 });
 
+export const UpdateContractDto = z.object({
+  name: z.string().min(1).optional(),
+  price: z.number().optional(),
+  cycle: CycleSchema.optional(),
+  startDate: z.coerce.date().optional(),
+  endDate: z.coerce.date().optional(),
+  debitDayOfMonth: z.number().min(1).max(28).optional(),
+  category: CategorySchema.optional(),
+});
+
 export const CreateContractDto = z.object({
   name: z.string(),
   price: z.number(),
   cycle: CycleSchema,
-  startDate: z.string(),
-  endDate: z.date().nullable().optional(),
-  debitDayOfMonth: z.number().min(1).max(28),
+  startDate: z.coerce.date(),
+  endDate: z.coerce.date().optional(),
   category: CategorySchema,
+  debitDayOfMonth: z.number().min(1).max(28),
+  isActive: z.boolean(),
   documents: z.array(
     z.object({
       id: z.string(),
@@ -62,7 +73,6 @@ export const CreateContractDto = z.object({
       uploadDate: z.string(), // ISO string
     }),
   ),
-  isActive: z.boolean(),
 });
 
 export type ContractDTO = z.infer<typeof ContractDTO>;

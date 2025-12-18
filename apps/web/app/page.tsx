@@ -1,16 +1,14 @@
 'use client';
 import {
-  Category,
   CategorySchema,
   ContractDTO,
-  Cycle,
+  CreateContractDto,
   CycleSchema,
 } from '@repo/shared-types/contract';
 import { ContractChart } from '@web/components/ContractChart';
 import { ContractForm } from '@web/components/ContractForm';
 import { ContractList } from '@web/components/ContractList';
 import { CostSummary } from '@web/components/CostSummary';
-import { Document } from '@web/components/DocumentManager';
 import {
   Tabs,
   TabsContent,
@@ -26,7 +24,7 @@ import { Button } from '../components/ui/button';
 
 const mockContracts: ContractDTO[] = [
   {
-    id: '1',
+    contractId: '1',
     name: 'Kfz-Versicherung',
     price: 780,
     cycle: CycleSchema.parse('MONTHLY'),
@@ -46,7 +44,7 @@ const mockContracts: ContractDTO[] = [
     userId: 'cmihd8btq0000ekywb3e8xr62',
   },
   {
-    id: '2',
+    contractId: '2',
     name: 'Kfz-Steuer',
     price: 156,
     cycle: CycleSchema.parse('MONTHLY'),
@@ -58,7 +56,7 @@ const mockContracts: ContractDTO[] = [
     userId: 'cmihd8btq0000ekywb3e8xr62',
   },
   {
-    id: '3',
+    contractId: '3',
     name: 'Netflix',
     price: 17.99,
     cycle: CycleSchema.parse('MONTHLY'),
@@ -97,7 +95,6 @@ export default function Home() {
           throw new Error(body.message || 'Fehler beim Laden der Verträge');
         }
         const data = await res.json();
-        console.log(data);
         setContracts(data);
       } catch (err: any) {
         console.log(err.message ?? 'Unbekannter Fehler');
@@ -107,7 +104,7 @@ export default function Home() {
     fetchContracts();
   }, [token]);
 
-  const addContract = async (contract: Omit<ContractDTO, 'id' | 'userId'>) => {
+  const addContract = async (contract: CreateContractDto) => {
     const newContract = {
       ...contract,
       id: Date.now().toString(),
@@ -163,19 +160,62 @@ export default function Home() {
     }
   };
 
-  const deleteContract = (id: string) => {
-    setContracts(contracts.filter((exp) => exp.id !== id));
+  const deleteContract = async (id: string) => {
+    // Store original contracts for potential rollback
+    const originalContracts = contracts;
+    console.log('contractId to delete:', id);
+    try {
+      const response = await fetch(`/api/contracts/${id}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to delete contract');
+      }
+      setContracts(contracts.filter((contract) => contract.contractId !== id));
+    } catch (err: any) {
+      setContracts(originalContracts);
+      throw new Error(err.message || 'Failed to delete contract');
+    }
   };
 
-  const updateContract = (
+  const updateContract = async (
     id: string,
-    updatedContract: Omit<ContractDTO, 'id'>,
+    updatedContract: Omit<ContractDTO, 'contractId'>,
   ) => {
-    setContracts(
-      contracts.map((exp) =>
-        exp.id === id ? { ...updatedContract, id } : exp,
-      ),
-    );
+    // Store original contracts for potential rollback
+    const originalContracts = contracts;
+    try {
+      const response = await fetch(`/api/contracts/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(updatedContract),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update contract');
+      }
+
+      const data = await response.json();
+      // Update with server response to ensure consistency
+      setContracts(
+        contracts.map((contract) =>
+          contract.contractId === id ? data : contract,
+        ),
+      );
+    } catch (err: any) {
+      // Revert UI on error
+      setContracts(originalContracts);
+      throw new Error(err.message || 'Failed to update contract');
+    }
   };
 
   return (
