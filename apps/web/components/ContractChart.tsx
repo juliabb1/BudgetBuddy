@@ -3,41 +3,41 @@ import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Toolti
 import { useState } from 'react';
 import { Button } from './ui/button';
 import { BarChart3, PieChart as PieChartIcon } from 'lucide-react';
-import { Expense } from '@web/app/page';
+import { Contract } from '@web/app/page';
 
-interface ExpenseChartProps {
-  expenses: Expense[];
+interface ContractChartProps {
+  contracts: Contract[];
 }
 
-export function ExpenseChart({ expenses }: ExpenseChartProps) {
+export function ContractChart({ contracts }: ContractChartProps) {
   const [chartType, setChartType] = useState<'bar' | 'pie'>('bar');
 
-  // Group expenses by category and calculate monthly amounts
-  const categoryData = expenses.reduce((acc, expense) => {
+  // Group contracts by category and calculate monthly amounts
+  const categoryData = contracts.reduce((acc, contract) => {
     let monthlyAmount = 0;
     
-    switch (expense.frequency) {
-      case 'monthly':
-        monthlyAmount = expense.amount;
+    switch (contract.cycle) {
+      case 'MONTHLY':
+        monthlyAmount = contract.price;
         break;
-      case 'quarterly':
-        monthlyAmount = expense.amount / 3;
+      case 'QUARTERLY':
+        monthlyAmount = contract.price / 3;
         break;
-      case 'semi-annually':
-        monthlyAmount = expense.amount / 6;
+      case 'HALF_YEARLY':
+        monthlyAmount = contract.price / 6;
         break;
-      case 'annually':
-        monthlyAmount = expense.amount / 12;
+      case 'YEARLY':
+        monthlyAmount = contract.price / 12;
         break;
     }
 
-    const existingCategory = acc.find(item => item.category === expense.category);
+    const existingCategory = acc.find(item => item.category === contract.category);
     if (existingCategory) {
       existingCategory.monthlyAmount += monthlyAmount;
       existingCategory.annualAmount += monthlyAmount * 12;
     } else {
       acc.push({
-        category: expense.category,
+        category: contract.category,
         monthlyAmount,
         annualAmount: monthlyAmount * 12
       });
@@ -57,7 +57,7 @@ export function ExpenseChart({ expenses }: ExpenseChartProps) {
     '#16a34a'  // green-600
   ];
 
-  if (expenses.length === 0) {
+  if (contracts.length === 0) {
     return (
       <Card className="p-12 text-center bg-linear-to-br from-emerald-50 to-teal-50 border-2 border-dashed border-emerald-300">
         <div className="text-6xl mb-4">📊</div>

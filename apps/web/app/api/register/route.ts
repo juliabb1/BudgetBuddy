@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import type { NextApiRequest, NextApiResponse } from "next";
+import { NextRequest, NextResponse } from "next/server";
 
 const backendUrl =
   process.env.BACKEND_URL ?? process.env.NEXT_PUBLIC_BACKEND_URL;
@@ -10,35 +10,22 @@ if (!backendUrl) {
   );
 }
 
-// Disable body parsing, we'll handle it manually if needed
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: "1mb",
-    },
-  },
-};
-
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ message: "Method not allowed" });
-  }
-
+export async function POST(req: NextRequest) {
   if (!backendUrl) {
-    return res
-      .status(500)
-      .json({ message: "BACKEND_URL is not configured on the server." });
+    return NextResponse.json(
+      { message: "BACKEND_URL is not configured on the server." },
+      { status: 500 }
+    );
   }
 
   try {
-    const body = req.body;
+    const body = await req.json();
+
     if (!body || Object.keys(body).length === 0) {
-      return res.status(400).json({
-        message: "Request body is empty or not properly formatted",
-      });
+      return NextResponse.json(
+        { message: "Request body is empty or not properly formatted" },
+        { status: 400 }
+      );
     }
 
     const { name, email, password } = body;
@@ -50,17 +37,22 @@ export default async function handler(
         email: !!email,
         password: !!password,
       });
-      return res.status(400).json({ message: "Alle Felder sind erforderlich" });
+      return NextResponse.json(
+        { message: "Alle Felder sind erforderlich" },
+        { status: 400 }
+      );
     }
 
     // Validate email format
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return res.status(400).json({ message: "Ungültige E-Mail-Adresse" });
+      return NextResponse.json(
+        { message: "Ungültige E-Mail-Adresse" },
+        { status: 400 }
+      );
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
 
-    // console.log(`[REGISTER] Calling backend at: ${backendUrl}/user`);
     const backendResponse = await fetch(`${backendUrl}/user`, {
       method: "POST",
       headers: {
@@ -68,24 +60,21 @@ export default async function handler(
       },
       body: JSON.stringify({ name, email, passwordHash }),
     });
-    // console.log(
-    //   `[REGISTER] Backend response status: ${backendResponse.status}`
-    // );
 
     if (!backendResponse.ok) {
       const errorBody = await backendResponse.json().catch(() => null);
       const message =
         (errorBody && (errorBody.message || errorBody.error)) ||
         "Fehler im Backend";
-      return res.status(backendResponse.status).json({ message });
+      return NextResponse.json({ message }, { status: backendResponse.status });
     }
 
     const user = await backendResponse.json();
-    return res.status(201).json({ user });
+    return NextResponse.json({ user }, { status: 201 });
   } catch (error: unknown) {
     console.error("Register error:", error);
     const errorMessage =
       error instanceof Error ? error.message : "Internal server error";
-    return res.status(500).json({ message: errorMessage });
+    return NextResponse.json({ message: errorMessage }, { status: 500 });
   }
 }

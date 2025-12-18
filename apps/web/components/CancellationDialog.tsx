@@ -5,17 +5,17 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
 import { FileDown, Copy, Check } from 'lucide-react';
-import { Expense } from '@web/app/page';
+import { Contract } from '@web/app/page';
 
 interface CancellationDialogProps {
-  expense: Expense;
+  contract: Contract;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onConfirmCancellation: (expenseId: string) => void;
+  onConfirmCancellation: (contractId: string) => void;
 }
 
 export function CancellationDialog({ 
-  expense, 
+  contract, 
   open, 
   onOpenChange,
   onConfirmCancellation 
@@ -37,7 +37,7 @@ export function CancellationDialog({
 ${senderAddress}
 ${senderCity}
 
-${expense.name}
+${contract.name}
 [Adresse des Anbieters]
 
 ${today}
@@ -46,7 +46,7 @@ Kündigung des Vertrages ${contractNumber ? `Nr. ${contractNumber}` : ''}
 
 Sehr geehrte Damen und Herren,
 
-hiermit kündige ich meinen Vertrag "${expense.name}"${contractNumber ? ` (Vertragsnummer: ${contractNumber})` : ''} fristgerecht zum nächstmöglichen Zeitpunkt.
+hiermit kündige ich meinen Vertrag "${contract.name}"${contractNumber ? ` (Vertragsnummer: ${contractNumber})` : ''} fristgerecht zum nächstmöglichen Zeitpunkt.
 
 Bitte senden Sie mir eine schriftliche Kündigungsbestätigung mit Angabe des Beendigungszeitpunktes zu.
 
@@ -77,14 +77,14 @@ Unterschrift`;
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `Kuendigung_${expense.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.txt`;
+    link.download = `Kuendigung_${contract.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.txt`;
     link.click();
     URL.revokeObjectURL(url);
   };
 
   const handleConfirm = () => {
-    if (window.confirm(`Möchten Sie den Vertrag "${expense.name}" wirklich kündigen und aus der Liste entfernen?`)) {
-      onConfirmCancellation(expense.id);
+    if (window.confirm(`Möchten Sie den Vertrag "${contract.name}" wirklich kündigen und aus der Liste entfernen?`)) {
+      onConfirmCancellation(contract.id);
       onOpenChange(false);
     }
   };
@@ -94,7 +94,7 @@ Unterschrift`;
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-linear-to-br from-orange-50 to-amber-50">
         <DialogHeader>
           <DialogTitle className="bg-linear-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent flex items-center gap-2">
-            <span className="text-3xl">✍️</span> Vertrag kündigen: {expense.name}
+            <span className="text-3xl">✍️</span> Vertrag kündigen: {contract.name}
           </DialogTitle>
         </DialogHeader>
 

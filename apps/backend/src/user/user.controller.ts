@@ -27,9 +27,11 @@ export class UserController {
 
   private readonly logger = new Logger(UserController.name);
 
-  @UseGuards(JwtAuthGuard)
+  // @UseGuards(JwtAuthGuard)
   @Get(':id')
   async getUser(@Param('id') id: string) {
+    this.logger.log(`Fetching user with ID: ${id}`);
+
     const user = await this.userService.getUser({
       userId: id,
     });

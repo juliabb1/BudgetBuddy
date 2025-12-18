@@ -1,79 +1,97 @@
-import { useState } from 'react';
-import { Card } from './ui/card';
-import { TrendingUp, Calendar, Wallet } from 'lucide-react';
-import { Expense } from '@web/app/page';
+import { Cycle, CycleSchema } from "@repo/shared-types/contract";
+import { Contract } from "@web/app/page";
+import { Calendar, TrendingUp, Wallet } from "lucide-react";
+import { useState } from "react";
+import { Card } from "./ui/card";
 
 interface CostSummaryProps {
-  expenses: Expense[];
+  contracts: Contract[];
 }
 
-type TimeFrame = 'monthly' | 'semi-annually' | 'annually';
+type TimeFrame = Contract["cycle"];
 
-export function CostSummary({ expenses }: CostSummaryProps) {
-  const [selectedTimeFrame, setSelectedTimeFrame] = useState<TimeFrame>('monthly');
+export function CostSummary({ contracts }: CostSummaryProps) {
+  const [selectedTimeFrame, setSelectedTimeFrame] = useState<Cycle>(
+    CycleSchema.parse("MONTHLY")
+  );
 
   const calculateTotal = (timeFrame: TimeFrame): number => {
-    return expenses.reduce((total, expense) => {
+    return contracts.reduce((total, contract) => {
+      const price = Number(contract.price) || 0; // <-- ensure number
       let monthlyAmount = 0;
-      
-      switch (expense.frequency) {
-        case 'monthly':
-          monthlyAmount = expense.amount;
+
+      switch (contract.cycle) {
+        case "MONTHLY":
+          monthlyAmount = price;
           break;
-        case 'quarterly':
-          monthlyAmount = expense.amount / 3;
+        case "QUARTERLY":
+          monthlyAmount = price / 3;
           break;
-        case 'semi-annually':
-          monthlyAmount = expense.amount / 6;
+        case "HALF_YEARLY":
+          monthlyAmount = price / 6;
           break;
-        case 'annually':
-          monthlyAmount = expense.amount / 12;
+        case "YEARLY":
+          monthlyAmount = price / 12;
           break;
       }
 
       switch (timeFrame) {
-        case 'monthly':
+        case "MONTHLY":
           return total + monthlyAmount;
-        case 'semi-annually':
-          return total + (monthlyAmount * 6);
-        case 'annually':
-          return total + (monthlyAmount * 12);
+        case "QUARTERLY":
+          return total + monthlyAmount * 3;
+        case "HALF_YEARLY":
+          return total + monthlyAmount * 6;
+        case "YEARLY":
+          return total + monthlyAmount * 12;
       }
+
+      return total;
     }, 0);
   };
 
-  const monthlyTotal = calculateTotal('monthly');
-  const semiAnnualTotal = calculateTotal('semi-annually');
-  const annualTotal = calculateTotal('annually');
+  const monthlyTotal = calculateTotal("MONTHLY");
+  const quarterlyTotal = calculateTotal("QUARTERLY");
+  const halfYearlyTotal = calculateTotal("HALF_YEARLY");
+  const yearlyTotal = calculateTotal("YEARLY");
 
   const timeFrameData = [
     {
-      id: 'monthly' as TimeFrame,
-      label: 'Monatlich',
-      amount: monthlyTotal,
+      id: "MONTHLY" as TimeFrame,
+      label: "Monatlich",
+      amount: monthlyTotal, // unified field name
       icon: Calendar,
-      gradient: 'from-emerald-500 to-teal-500',
-      bgLight: 'bg-emerald-50',
-      textColor: 'text-emerald-600'
+      gradient: "from-emerald-500 to-teal-500",
+      bgLight: "bg-emerald-50",
+      textColor: "text-emerald-600",
     },
     {
-      id: 'semi-annually' as TimeFrame,
-      label: 'Halbjährlich',
-      amount: semiAnnualTotal,
+      id: "QUARTERLY" as TimeFrame,
+      label: "Vierteljährlich",
+      amount: quarterlyTotal,
       icon: TrendingUp,
-      gradient: 'from-green-500 to-emerald-500',
-      bgLight: 'bg-green-50',
-      textColor: 'text-green-600'
+      gradient: "from-green-500 to-emerald-500",
+      bgLight: "bg-green-50",
+      textColor: "text-green-600",
     },
     {
-      id: 'annually' as TimeFrame,
-      label: 'Jährlich',
-      amount: annualTotal,
+      id: "HALF_YEARLY" as TimeFrame,
+      label: "Halbjährlich",
+      amount: halfYearlyTotal,
+      icon: TrendingUp,
+      gradient: "from-green-500 to-emerald-500",
+      bgLight: "bg-green-50",
+      textColor: "text-green-600",
+    },
+    {
+      id: "YEARLY" as TimeFrame,
+      label: "Jährlich",
+      amount: yearlyTotal,
       icon: Wallet,
-      gradient: 'from-teal-500 to-cyan-500',
-      bgLight: 'bg-teal-50',
-      textColor: 'text-teal-600'
-    }
+      gradient: "from-teal-500 to-cyan-500",
+      bgLight: "bg-teal-50",
+      textColor: "text-teal-600",
+    },
   ];
 
   return (
@@ -91,42 +109,42 @@ export function CostSummary({ expenses }: CostSummaryProps) {
         {timeFrameData.map((timeFrame) => {
           const Icon = timeFrame.icon;
           const isSelected = selectedTimeFrame === timeFrame.id;
-          
+
           return (
             <button
               key={timeFrame.id}
               onClick={() => setSelectedTimeFrame(timeFrame.id)}
-              className={`
-                relative overflow-hidden rounded-2xl p-6 text-left transition-all duration-300
-                ${isSelected 
-                  ? `bg-linear-to-br ${timeFrame.gradient} text-white shadow-xl scale-105 transform` 
+              className={`relative overflow-hidden rounded-2xl p-6 text-left transition-all duration-300 ${
+                isSelected
+                  ? `bg-linear-to-br ${timeFrame.gradient} text-white shadow-xl scale-105 transform`
                   : `${timeFrame.bgLight} hover:shadow-lg border-2 border-transparent hover:border-${timeFrame.gradient}`
-                }
-              `}
+              }`}
             >
               <div className="flex items-start justify-between mb-3">
-                <div className={`p-3 rounded-xl ${isSelected ? 'bg-white/20 backdrop-blur-sm' : 'bg-white shadow-sm'}`}>
-                  <Icon className={`w-6 h-6 ${isSelected ? 'text-white' : timeFrame.textColor}`} />
+                <div
+                  className={`p-3 rounded-xl ${
+                    isSelected
+                      ? "bg-white/20 backdrop-blur-sm"
+                      : "bg-white shadow-sm"
+                  }`}
+                >
+                  <Icon
+                    className={`w-6 h-6 ${isSelected ? "text-white" : timeFrame.textColor}`}
+                  />
                 </div>
-                {isSelected && (
-                  <div className="flex gap-1">
-                    <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
-                    <div className="w-2 h-2 rounded-full bg-white/60 animate-pulse delay-75" />
-                  </div>
-                )}
-              </div>
-              
-              <div className={`text-sm mb-2 ${isSelected ? 'text-white/90' : 'text-slate-600'}`}>
-                {timeFrame.label}
-              </div>
-              
-              <div className={`text-2xl ${isSelected ? 'text-white' : timeFrame.textColor}`}>
-                {timeFrame.amount.toFixed(2)} €
               </div>
 
-              {isSelected && (
-                <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16" />
-              )}
+              <div
+                className={`text-sm mb-2 ${isSelected ? "text-white/90" : "text-slate-600"}`}
+              >
+                {timeFrame.label}
+              </div>
+
+              <div
+                className={`text-2xl ${isSelected ? "text-white" : timeFrame.textColor}`}
+              >
+                {Number(timeFrame.amount).toFixed(2)} €
+              </div>
             </button>
           );
         })}
@@ -138,59 +156,71 @@ export function CostSummary({ expenses }: CostSummaryProps) {
             📊 Detaillierte Aufschlüsselung
           </h3>
           <span className="text-sm text-slate-600 bg-white px-4 py-2 rounded-full shadow-sm border border-slate-200">
-            {selectedTimeFrame === 'monthly' && '📅 Pro Monat'}
-            {selectedTimeFrame === 'semi-annually' && '📆 Pro Halbjahr'}
-            {selectedTimeFrame === 'annually' && '🗓️ Pro Jahr'}
+            {selectedTimeFrame === "MONTHLY" && "📅 Pro Monat"}
+            {selectedTimeFrame === "QUARTERLY" && "📆 Pro Quartal"}
+            {selectedTimeFrame === "HALF_YEARLY" && "📆 Pro Halbjahr"}
+            {selectedTimeFrame === "YEARLY" && "🗓️ Pro Jahr"}
           </span>
         </div>
 
         <div className="space-y-3">
-          {expenses.map((expense) => {
-            let displayAmount = 0;
+          {contracts.map((contract, index) => {
+            const key = contract.id ? contract.id : `contract-${index}`;
+
+            const price = Number(contract.price) || 0;
             let monthlyAmount = 0;
-            
-            switch (expense.frequency) {
-              case 'monthly':
-                monthlyAmount = expense.amount;
+
+            switch (contract.cycle) {
+              case "MONTHLY":
+                monthlyAmount = price;
                 break;
-              case 'quarterly':
-                monthlyAmount = expense.amount / 3;
+              case "QUARTERLY":
+                monthlyAmount = price / 3;
                 break;
-              case 'semi-annually':
-                monthlyAmount = expense.amount / 6;
+              case "HALF_YEARLY":
+                monthlyAmount = price / 6;
                 break;
-              case 'annually':
-                monthlyAmount = expense.amount / 12;
+              case "YEARLY":
+                monthlyAmount = price / 12;
                 break;
             }
 
+            let displayAmount = 0;
             switch (selectedTimeFrame) {
-              case 'monthly':
+              case "MONTHLY":
                 displayAmount = monthlyAmount;
                 break;
-              case 'semi-annually':
+              case "QUARTERLY":
+                displayAmount = monthlyAmount * 3;
+                break;
+              case "HALF_YEARLY":
                 displayAmount = monthlyAmount * 6;
                 break;
-              case 'annually':
+              case "YEARLY":
                 displayAmount = monthlyAmount * 12;
                 break;
             }
 
             return (
-              <div key={expense.id} className="flex items-center justify-between bg-white p-4 rounded-xl shadow-sm hover:shadow-md transition-all border border-slate-100 hover:border-emerald-200">
+              <div
+                key={key}
+                className="flex items-center justify-between bg-white p-4 rounded-xl shadow-sm hover:shadow-md transition-all border border-slate-100 hover:border-emerald-200"
+              >
                 <div>
-                  <div className="text-slate-900">{expense.name}</div>
-                  <div className="text-sm text-slate-500">🏷️ {expense.category}</div>
+                  <div className="text-slate-900">{contract.name}</div>
+                  <div className="text-sm text-slate-500">
+                    🏷️ {contract.category}
+                  </div>
                 </div>
                 <div className="text-right">
                   <div className="text-lg bg-linear-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
                     {displayAmount.toFixed(2)} €
                   </div>
                   <div className="text-xs text-slate-500">
-                    {expense.frequency === 'monthly' && '📅 Monatlich'}
-                    {expense.frequency === 'quarterly' && '📊 Vierteljährlich'}
-                    {expense.frequency === 'semi-annually' && '📆 Halbjährlich'}
-                    {expense.frequency === 'annually' && '🗓️ Jährlich'}
+                    {contract.cycle === "MONTHLY" && "📅 Monatlich"}
+                    {contract.cycle === "QUARTERLY" && "📊 Vierteljährlich"}
+                    {contract.cycle === "HALF_YEARLY" && "📆 Halbjährlich"}
+                    {contract.cycle === "YEARLY" && "🗓️ Jährlich"}
                   </div>
                 </div>
               </div>
