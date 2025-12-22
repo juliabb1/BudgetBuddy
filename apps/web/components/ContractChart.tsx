@@ -1,4 +1,4 @@
-import { ContractDTO } from '@repo/shared-types/contract';
+import { CATEGORY_LABELS, ContractDTO } from '@repo/shared-types/contract';
 import { BarChart3, PieChart as PieChartIcon } from 'lucide-react';
 import { useState } from 'react';
 import {
@@ -23,9 +23,17 @@ interface ContractChartProps {
 
 export function ContractChart({ contracts }: ContractChartProps) {
   const [chartType, setChartType] = useState<'bar' | 'pie'>('bar');
+  const [filter, setFilter] = useState<'all' | 'active' | 'inactive'>('all');
+
+  // Filter contracts based on isActive
+  const filteredContracts = contracts.filter((contract) => {
+    if (filter === 'active') return contract.isActive;
+    if (filter === 'inactive') return !contract.isActive;
+    return true;
+  });
 
   // Group contracts by category and calculate monthly amounts
-  const categoryData = contracts.reduce(
+  const categoryData = filteredContracts.reduce(
     (acc, contract) => {
       let monthlyAmount = 0;
 
@@ -44,15 +52,15 @@ export function ContractChart({ contracts }: ContractChartProps) {
           break;
       }
 
-      const existingCategory = acc.find(
-        (item) => item.category === contract.category,
-      );
+      const label = CATEGORY_LABELS[contract.category] || contract.category;
+
+      const existingCategory = acc.find((item) => item.category === label);
       if (existingCategory) {
         existingCategory.monthlyAmount += monthlyAmount;
         existingCategory.annualAmount += monthlyAmount * 12;
       } else {
         acc.push({
-          category: contract.category,
+          category: label,
           monthlyAmount,
           annualAmount: monthlyAmount * 12,
         });
@@ -74,13 +82,13 @@ export function ContractChart({ contracts }: ContractChartProps) {
     '#16a34a', // green-600
   ];
 
-  if (contracts.length === 0) {
+  if (filteredContracts.length === 0) {
     return (
       <Card className="p-12 text-center bg-linear-to-br from-emerald-50 to-teal-50 border-2 border-dashed border-emerald-300">
         <div className="text-6xl mb-4">📊</div>
         <div className="text-slate-600 mb-2">Keine Daten verfügbar</div>
         <p className="text-slate-500 text-sm">
-          Fügen Sie Verträge hinzu, um Diagramme anzuzeigen
+          Fügen Sie Verträge hinzu oder ändern Sie den Filter
         </p>
       </Card>
     );
@@ -88,6 +96,47 @@ export function ContractChart({ contracts }: ContractChartProps) {
 
   return (
     <div className="space-y-6">
+      {/* Filter Buttons */}
+      <div className="flex gap-2">
+        <Button
+          variant={filter === 'all' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setFilter('all')}
+          className={
+            filter === 'all'
+              ? 'bg-linear-to-r from-emerald-600 to-teal-600'
+              : ''
+          }
+        >
+          Alle
+        </Button>
+        <Button
+          variant={filter === 'active' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setFilter('active')}
+          className={
+            filter === 'active'
+              ? 'bg-linear-to-r from-emerald-600 to-teal-600'
+              : ''
+          }
+        >
+          Aktive
+        </Button>
+        <Button
+          variant={filter === 'inactive' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setFilter('inactive')}
+          className={
+            filter === 'inactive'
+              ? 'bg-linear-to-r from-emerald-600 to-teal-600'
+              : ''
+          }
+        >
+          Gekündigte
+        </Button>
+      </div>
+
+      {/* Chart Card */}
       <Card className="p-6 bg-white/80 backdrop-blur-sm border-white shadow-sm">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
           <div>

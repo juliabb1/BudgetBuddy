@@ -1,4 +1,8 @@
-import { ContractDTO, Document } from '@repo/shared-types/contract';
+import {
+  CATEGORY_LABELS,
+  ContractDTO,
+  Document,
+} from '@repo/shared-types/contract';
 import { Calendar, Clipboard, Edit, FileText, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { CancellationDialog } from './CancellationDialog';
@@ -67,6 +71,7 @@ export function ContractList({
         isActive: editingContract.isActive,
         debitDayOfMonth: 1,
         category: editingContract.category,
+        documents: editingContract.documents,
       });
       setIsDialogOpen(false);
       setEditingContract(null);
@@ -87,6 +92,7 @@ export function ContractList({
       category: contract.category,
       startDate: contract.startDate,
       debitDayOfMonth: contract.debitDayOfMonth ?? 1,
+      documents: contract.documents,
       userId: contract.userId,
       isActive: false, // jetzt deaktiviert
     });
@@ -206,6 +212,11 @@ export function ContractList({
                     >
                       {getCycleLabel(contract.cycle)}
                     </Badge>
+                    {!contract.isActive && (
+                      <Badge className="bg-linear-to-r from-red-500 to-red-500 text-white shadow-sm">
+                        {contract.isActive ? '' : 'Gekündigt'}
+                      </Badge>
+                    )}
                     {(contract.documents ?? []).length > 0 && (
                       <Badge
                         variant="outline"
@@ -231,7 +242,9 @@ export function ContractList({
                       <div className="text-sm text-slate-600 mb-1">
                         🏷️ Kategorie
                       </div>
-                      <div className="text-slate-900">{contract.category}</div>
+                      <div className="text-slate-900">
+                        {CATEGORY_LABELS[contract.category]}
+                      </div>
                     </div>
 
                     {contract.startDate && (
@@ -260,19 +273,28 @@ export function ContractList({
                     <Edit className="w-4 h-4 text-emerald-600" />
                   </Button>
 
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleCancelContract(contract)}
-                    className="bg-white/80 hover:bg-orange-50 hover:border-orange-300 transition-all"
-                  >
-                    <Clipboard className="w-4 h-4 text-orange-600" />
-                  </Button>
+                  {contract.isActive && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleCancelContract(contract)}
+                      className="bg-white/80 hover:bg-orange-50 hover:border-orange-300 transition-all"
+                    >
+                      <Clipboard className="w-4 h-4 text-orange-600" />
+                    </Button>
+                  )}
 
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => onDeleteContract(contract.contractId)}
+                    onClick={() => {
+                      const confirmed = window.confirm(
+                        `Möchten Sie den Vertrag "${contract.name}" wirklich löschen?\n\nDiese Aktion kann nicht rückgängig gemacht werden.`,
+                      );
+                      if (confirmed) {
+                        onDeleteContract(contract.contractId);
+                      }
+                    }}
                     className="bg-white/80 hover:bg-red-50 hover:border-red-300 transition-all"
                   >
                     <Trash2 className="w-4 h-4 text-red-600" />
@@ -430,6 +452,27 @@ export function ContractList({
                   }
                 />
               </div>
+
+              {!editingContract.isActive && (
+                <div className="p-4 bg-red-50 border border-red-300 rounded-lg">
+                  <p className="text-red-700 mb-2 font-medium">
+                    Dieser Vertrag ist derzeit gekündigt.
+                  </p>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    onClick={() =>
+                      setEditingContract({
+                        ...editingContract,
+                        isActive: true,
+                      })
+                    }
+                    className="bg-linear-to-r from-red-600 to-orange-500 text-white hover:from-red-700 hover:to-orange-600"
+                  >
+                    Vertrag reaktivieren
+                  </Button>
+                </div>
+              )}
 
               <div className="flex gap-2 justify-end">
                 <Button

@@ -64,6 +64,7 @@ export const UpdateContractDto = z.object({
   endDate: z.coerce.date().optional(),
   debitDayOfMonth: z.number().min(1).max(28).optional(),
   category: CategorySchema.optional(),
+  isActive: z.boolean().optional(),
 });
 
 export const CreateContractDto = z.object({
@@ -79,3 +80,17 @@ export const CreateContractDto = z.object({
 
 export type ContractDTO = z.infer<typeof ContractDTO>;
 export type CreateContractDto = z.infer<typeof CreateContractDto>;
+
+export const CATEGORY_LABELS: Record<Category, string> = {
+  INSURANCE: 'Versicherung',
+  ENERGY: 'Energie',
+  INTERNET: 'Internet',
+  PHONE: 'Telefon',
+  STREAMING: 'Streaming',
+  FOOD: 'Lebensmittel',
+  TRANSPORT: 'Transport',
+  HEALTH: 'Gesundheit',
+  EDUCATION: 'Bildung',
+  SUBSCRIPTION: 'Abonnement',
+  OTHER: 'Sonstiges',
+};
