@@ -37,12 +37,27 @@ model Contract {
   endDate         DateTime?
   debitDayOfMonth Int
   category        Category
-  documents       Json?
+  documents       Document[]
   isActive        Boolean   @default(true)
 
   user            User      @relation(fields: [userId], references: [userId])
 
   @@index([userId])
+}
+
+model Document {
+  documentId   String @id @default(cuid())
+  contractId   String
+  originalName String
+  fileName     String
+  filePath     String
+  fileSize     Int
+  mimeType     String
+  uploadedAt   DateTime @default(now())
+
+  contract     Contract @relation(fields: [contractId], references: [contractId], onDelete: Cascade)
+
+  @@index([contractId])
 }
 
 model User {
