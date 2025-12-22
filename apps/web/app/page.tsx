@@ -34,11 +34,20 @@ const mockContracts: ContractDTO[] = [
     isActive: true,
     documents: [
       {
+        documentId: 'd1',
+        contractId: '1',
+        originalName: 'Versicherungsvertrag.pdf',
+        fileName: 'd1-1234567890-abcdef.pdf',
+        filePath: '/uploads/d1-1234567890-abcdef.pdf',
+        fileSize: 245760,
+        mimeType: 'application/pdf',
+        uploadedAt: new Date('2024-03-15T10:00:00Z'),
+        // Frontend compatibility fields
         id: 'd1',
         name: 'Versicherungsvertrag.pdf',
-        data: 'data:application/pdf;base64,JVBERi0xLjQKJcfs...',
+        data: `${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'}/contracts/documents/d1/download`,
         type: 'application/pdf',
-        uploadDate: new Date().toISOString(),
+        uploadDate: new Date('2024-03-15T10:00:00Z').toISOString(),
       },
     ],
     userId: 'cmihd8btq0000ekywb3e8xr62',
@@ -78,7 +87,6 @@ export default function Home() {
   const token = useAccessToken();
 
   useEffect(() => {
-    console.log('Access Token in Home page:', token);
     if (!token) return; // Wait until token is available
 
     const fetchContracts = async () => {
@@ -113,24 +121,26 @@ export default function Home() {
     console.log('Creating contract via API route:', contract);
 
     try {
-      const res = await fetch('/api/contracts', {
-        method: 'POST',
-        credentials: 'include', // REQUIRED
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/contracts`,
+        {
+          method: 'POST',
+          credentials: 'include', // REQUIRED
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            name: contract.name,
+            price: contract.price,
+            cycle: contract.cycle,
+            startDate: contract.startDate,
+            debitDayOfMonth: contract.debitDayOfMonth,
+            category: contract.category,
+            isActive: contract.isActive,
+          }),
         },
-        body: JSON.stringify({
-          name: contract.name,
-          price: contract.price,
-          cycle: contract.cycle,
-          startDate: contract.startDate,
-          debitDayOfMonth: contract.debitDayOfMonth,
-          category: contract.category,
-          isActive: contract.isActive,
-          documents: contract.documents,
-        }),
-      });
+      );
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -185,19 +195,25 @@ export default function Home() {
 
   const updateContract = async (
     id: string,
-    updatedContract: Omit<ContractDTO, 'contractId'>,
+    updatedContract: Partial<Omit<ContractDTO, 'contractId'>>,
   ) => {
     // Store original contracts for potential rollback
     const originalContracts = contracts;
     try {
-      const response = await fetch(`/api/contracts/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+      // Remove documents from update payload since they're handled separately
+      const { documents, ...contractUpdate } = updatedContract;
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/contracts/${id}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(contractUpdate),
         },
-        body: JSON.stringify(updatedContract),
-      });
+      );
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -206,9 +222,10 @@ export default function Home() {
 
       const data = await response.json();
       // Update with server response to ensure consistency
+      // Merge with existing contract data to preserve all fields
       setContracts(
         contracts.map((contract) =>
-          contract.contractId === id ? data : contract,
+          contract.contractId === id ? { ...contract, ...data } : contract,
         ),
       );
     } catch (err: any) {
@@ -296,6 +313,8 @@ export default function Home() {
                 contracts={contracts}
                 onDeleteContract={deleteContract}
                 onUpdateContract={updateContract}
+                onUpdateContracts={setContracts}
+                token={token || ''}
               />
             </TabsContent>
 

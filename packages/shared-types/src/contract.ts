@@ -23,6 +23,25 @@ export const CategorySchema = z.enum([
 ]);
 export type Category = z.infer<typeof CategorySchema>;
 
+export const DocumentSchema = z.object({
+  documentId: z.string(),
+  contractId: z.string(),
+  originalName: z.string(),
+  fileName: z.string(),
+  filePath: z.string(),
+  fileSize: z.number(),
+  mimeType: z.string(),
+  uploadedAt: z.date(),
+  // For frontend compatibility
+  id: z.string(),
+  name: z.string(),
+  data: z.string(), // Will be download URL
+  type: z.string(),
+  uploadDate: z.string(),
+});
+
+export type Document = z.infer<typeof DocumentSchema>;
+
 export const ContractDTO = z.object({
   contractId: z.string(),
   userId: z.string(),
@@ -34,15 +53,7 @@ export const ContractDTO = z.object({
   isActive: z.boolean(),
   debitDayOfMonth: z.number().min(1).max(28),
   category: CategorySchema,
-  documents: z.array(
-    z.object({
-      id: z.string(),
-      name: z.string(),
-      data: z.string(),
-      type: z.string(),
-      uploadDate: z.string(), // ISO string
-    }),
-  ),
+  documents: z.array(DocumentSchema),
 });
 
 export const UpdateContractDto = z.object({
@@ -64,15 +75,6 @@ export const CreateContractDto = z.object({
   category: CategorySchema,
   debitDayOfMonth: z.number().min(1).max(28),
   isActive: z.boolean(),
-  documents: z.array(
-    z.object({
-      id: z.string(),
-      name: z.string(),
-      data: z.string(),
-      type: z.string(),
-      uploadDate: z.string(), // ISO string
-    }),
-  ),
 });
 
 export type ContractDTO = z.infer<typeof ContractDTO>;

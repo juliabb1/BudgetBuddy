@@ -1,7 +1,8 @@
+import { ContractDTO, Document } from '@repo/shared-types/contract';
 import { Calendar, Clipboard, Edit, FileText, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { CancellationDialog } from './CancellationDialog';
-import { Document, DocumentManager } from './DocumentManager';
+import { DocumentManager } from './DocumentManager';
 import {
   Accordion,
   AccordionContent,
@@ -21,21 +22,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from './ui/select';
-import { ContractDTO } from '@repo/shared-types/contract';
 
 interface ContractListProps {
   contracts: ContractDTO[];
   onDeleteContract: (id: string) => void;
   onUpdateContract: (
     contractId: string,
-    contract: Omit<ContractDTO, 'contractId'>,
+    contract: Partial<Omit<ContractDTO, 'contractId'>>,
   ) => void;
+  onUpdateContracts: (contracts: ContractDTO[]) => void;
+  token: string;
 }
 
 export function ContractList({
   contracts,
   onDeleteContract,
   onUpdateContract,
+  onUpdateContracts,
+  token,
 }: ContractListProps) {
   const [editingContract, setEditingContract] = useState<ContractDTO | null>(
     null,
@@ -63,7 +67,6 @@ export function ContractList({
         isActive: editingContract.isActive,
         debitDayOfMonth: 1,
         category: editingContract.category,
-        documents: editingContract.documents ?? [],
       });
       setIsDialogOpen(false);
       setEditingContract(null);
@@ -75,38 +78,62 @@ export function ContractList({
     setIsCancellationDialogOpen(true);
   };
 
-  const handleConfirmCancellation = (contractId: string) => {
-    onDeleteContract(contractId);
+  const handleConfirmCancellation = (contract: ContractDTO) => {
+    console.log('Kündigung bestätigt für Vertrag:', contract);
+    onUpdateContract(contract.contractId, {
+      name: contract.name,
+      price: Number(contract.price),
+      cycle: contract.cycle,
+      category: contract.category,
+      startDate: contract.startDate,
+      debitDayOfMonth: contract.debitDayOfMonth ?? 1,
+      userId: contract.userId,
+      isActive: false, // jetzt deaktiviert
+    });
     setIsCancellationDialogOpen(false);
   };
 
-  const handleAddDocument = (
-    contractId: string,
-    document: Omit<Document, 'id' | 'uploadDate'>,
-  ) => {
-    const contract = contracts.find((e) => e.contractId === contractId);
-    if (contract) {
-      const newDocument: Document = {
-        ...document,
-        id: Date.now().toString(),
-        uploadDate: new Date().toISOString(),
-      };
-      onUpdateContract(contractId, {
-        ...contract,
-        documents: [...(contract.documents ?? []), newDocument],
-      });
-    }
+  const handleAddDocument = async (contractId: string, document: Document) => {
+    // Update local state immediately for better UX
+    const updatedContracts = contracts.map((c) =>
+      c.contractId === contractId
+        ? { ...c, documents: [...(c.documents ?? []), document] }
+        : c,
+    );
+    onUpdateContracts(updatedContracts);
   };
 
-  const handleDeleteDocument = (contractId: string, documentId: string) => {
-    const contract = contracts.find((e) => e.contractId === contractId);
-    if (contract) {
-      onUpdateContract(contractId, {
-        ...contract,
-        documents: (contract.documents ?? []).filter(
-          (d) => d.id !== documentId,
-        ),
-      });
+  const handleDeleteDocument = async (
+    contractId: string,
+    documentId: string,
+  ) => {
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/contracts/documents/${documentId}`,
+        {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      if (response.ok) {
+        // Update local state
+        const updatedContracts = contracts.map((c) =>
+          c.contractId === contractId
+            ? {
+                ...c,
+                documents: (c.documents ?? []).filter(
+                  (d) => d.id !== documentId,
+                ),
+              }
+            : c,
+        );
+        onUpdateContracts(updatedContracts);
+      }
+    } catch (error) {
+      console.error('Delete error:', error);
     }
   };
 
@@ -264,16 +291,18 @@ export function ContractList({
                   <div className="flex items-center gap-2">
                     <FileText className="w-4 h-4 text-emerald-600" />
                     <span>📎 Dokumente & Unterlagen</span>
-                    {(contract.documents ?? []).length > 0 && (
-                      <span className="text-sm bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full">
-                        {(contract.documents ?? []).length}
-                      </span>
-                    )}
+                    <span
+                      className={`text-sm bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full ${(contract.documents ?? []).length > 0 ? '' : 'invisible'}`}
+                    >
+                      {(contract.documents ?? []).length}
+                    </span>
                   </div>
                 </AccordionTrigger>
                 <AccordionContent className="px-6 pb-6 bg-white/30 rounded-b-2xl">
                   <DocumentManager
                     documents={contract.documents ?? []}
+                    contractId={contract.contractId}
+                    token={token}
                     onAddDocument={(doc) =>
                       handleAddDocument(contract.contractId, doc)
                     }

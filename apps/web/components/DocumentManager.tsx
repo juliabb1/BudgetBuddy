@@ -1,34 +1,32 @@
 import { useState } from 'react';
+import { Document } from '@repo/shared-types/contract';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { FileText, Upload, Download, Trash2, Eye } from 'lucide-react';
+import { FileText, Upload, Download, Eye, Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import Image from 'next/image';
 
-export interface Document {
-  id: string;
-  name: string;
-  data: string;
-  type: string;
-  uploadDate: string;
-}
-
 interface DocumentManagerProps {
   documents: Document[];
-  onAddDocument: (document: Omit<Document, 'id' | 'uploadDate'>) => void;
+  onAddDocument: (document: Document) => void;
   onDeleteDocument: (id: string) => void;
+  token: string;
 }
 
-export function DocumentManager({ documents, onAddDocument, onDeleteDocument }: DocumentManagerProps) {
+export function DocumentManager({
+  documents,
+  onAddDocument,
+  onDeleteDocument,
+  contractId,
+  token,
+}: DocumentManagerProps & { contractId: string }) {
   const [isUploading, setIsUploading] = useState(false);
   const [previewDoc, setPreviewDoc] = useState<Document | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const uploadFile = async (file: File) => {
     // Limit file size to 5MB
     if (file.size > 5 * 1024 * 1024) {
       alert('Datei ist zu groß. Maximale Größe: 5MB');
@@ -37,30 +35,83 @@ export function DocumentManager({ documents, onAddDocument, onDeleteDocument }: 
 
     setIsUploading(true);
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const data = event.target?.result as string;
-      onAddDocument({
-        name: file.name,
-        data: data,
-        type: file.type
-      });
-      setIsUploading(false);
-    };
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
 
-    reader.readAsDataURL(file);
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/contracts/${contractId}/documents`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: formData,
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+
+      const newDocument = await response.json();
+      onAddDocument(newDocument);
+    } catch (error) {
+      console.error('Upload error:', error);
+      alert('Fehler beim Hochladen der Datei');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await uploadFile(file);
     e.target.value = '';
   };
 
   const handleDownload = (doc: Document) => {
     const link = document.createElement('a');
-    link.href = doc.data;
-    link.download = doc.name;
+    link.href = doc.data; // This is now the download URL
+    link.target = '_blank'; // Open in new tab for download
     link.click();
   };
 
   const handlePreview = (doc: Document) => {
     setPreviewDoc(doc);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  };
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length === 0) return;
+
+    const file = files[0]; // Only handle first file for now
+    if (!file) return;
+
+    await uploadFile(file);
   };
 
   return (
@@ -70,7 +121,13 @@ export function DocumentManager({ documents, onAddDocument, onDeleteDocument }: 
           <span className="text-2xl">📁</span> Dokumente & Unterlagen
         </h3>
         <Label htmlFor="file-upload" className="cursor-pointer">
-          <Button type="button" size="sm" disabled={isUploading} asChild className="bg-linear-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
+          <Button
+            type="button"
+            size="sm"
+            disabled={isUploading}
+            asChild
+            className="bg-linear-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+          >
             <span>
               <Upload className="w-4 h-4 mr-2" />
               {isUploading ? 'Lädt...' : 'Hochladen'}
@@ -86,64 +143,105 @@ export function DocumentManager({ documents, onAddDocument, onDeleteDocument }: 
         />
       </div>
 
-      {documents.length === 0 ? (
-        <Card className="p-8 text-center border-2 border-dashed border-purple-300 bg-linear-to-br from-purple-50 to-pink-50">
-          <div className="text-6xl mb-3">📄</div>
-          <p className="text-slate-600 text-sm mb-1">Noch keine Dokumente hochgeladen</p>
-          <p className="text-slate-500 text-xs">
-            PDF, DOC, DOCX, JPG, PNG (max. 5MB)
-          </p>
-        </Card>
-      ) : (
-        <div className="space-y-2">
-          {documents.map((doc) => (
-            <Card key={doc.id} className="p-4 bg-white/80 backdrop-blur-sm hover:shadow-md transition-all border border-purple-100">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <div className="bg-linear-to-br from-purple-500 to-pink-500 p-2 rounded-lg">
-                    <FileText className="w-5 h-5 text-white shrink-0" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm text-slate-900 truncate">{doc.name}</div>
-                    <div className="text-xs text-slate-500">
-                      📅 {new Date(doc.uploadDate).toLocaleDateString('de-DE')}
+      <div
+        className={`transition-all duration-200`}
+        onDragOver={handleDragOver}
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+        {documents.length === 0 ? (
+          <Card
+            className={`p-8 text-center border-2 border-dashed transition-all duration-200 gap-2 ${
+              isDragOver
+                ? 'border-purple-500 bg-purple-100 shadow-lg scale-[102%]'
+                : 'border-purple-300 bg-linear-to-br from-purple-50 to-pink-50'
+            }`}
+          >
+            <div
+              className={`text-6xl mb-3 transition-transform duration-200 ${
+                isDragOver ? 'scale-105' : 'scale-100'
+              }`}
+            >
+              {isDragOver ? '📥' : '📄'}
+            </div>
+            <p className="text-slate-600 text-sm mb-1">
+              {isDragOver
+                ? 'Datei hier ablegen'
+                : 'Noch keine Dokumente hochgeladen'}
+            </p>
+            <p className="text-slate-500 text-xs">
+              {isDragOver
+                ? 'PDF, DOC, DOCX, JPG, PNG (max. 5MB)'
+                : 'Ziehe Dateien hierher oder klicke auf "Hochladen"'}
+            </p>
+            <p className="text-slate-500 text-xs mt-1">
+              PDF, DOC, DOCX, JPG, PNG (max. 5MB)
+            </p>
+          </Card>
+        ) : (
+          <div
+            className={`space-y-2 transition-all duration-200 ${
+              isDragOver
+                ? 'ring-2 ring-purple-400 ring-opacity-50 rounded-lg p-2 scale-[102%]'
+                : ''
+            }`}
+          >
+            {documents.map((doc) => (
+              <Card
+                key={doc.id}
+                className="p-4 bg-white/80 backdrop-blur-sm hover:shadow-md transition-all border border-purple-100"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="bg-linear-to-br from-purple-500 to-pink-500 p-2 rounded-lg">
+                      <FileText className="w-5 h-5 text-white shrink-0" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm text-slate-900 truncate">
+                        {doc.name}
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        📅{' '}
+                        {new Date(doc.uploadDate).toLocaleDateString('de-DE')}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="flex gap-2 ml-2">
-                  {doc.type.startsWith('image/') && (
+                  <div className="flex gap-2 ml-2">
+                    {doc.type.startsWith('image/') && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handlePreview(doc)}
+                        className="hover:bg-blue-50"
+                      >
+                        <Eye className="w-4 h-4 text-blue-600" />
+                      </Button>
+                    )}
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => handlePreview(doc)}
-                      className="hover:bg-blue-50"
+                      onClick={() => handleDownload(doc)}
+                      className="hover:bg-green-50"
                     >
-                      <Eye className="w-4 h-4 text-blue-600" />
+                      <Download className="w-4 h-4 text-green-600" />
                     </Button>
-                  )}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDownload(doc)}
-                    className="hover:bg-green-50"
-                  >
-                    <Download className="w-4 h-4 text-green-600" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onDeleteDocument(doc.id)}
-                    className="hover:bg-red-50"
-                  >
-                    <Trash2 className="w-4 h-4 text-red-600" />
-                  </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onDeleteDocument(doc.id)}
+                      className="hover:bg-red-50"
+                    >
+                      <Trash2 className="w-4 h-4 text-red-600" />
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            </Card>
-          ))}
-        </div>
-      )}
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
 
       <Dialog open={!!previewDoc} onOpenChange={() => setPreviewDoc(null)}>
         <DialogContent className="max-w-3xl">
@@ -152,8 +250,8 @@ export function DocumentManager({ documents, onAddDocument, onDeleteDocument }: 
           </DialogHeader>
           {previewDoc && (
             <div className="mt-4">
-              <Image 
-                src={previewDoc.data} 
+              <Image
+                src={previewDoc.data}
                 alt={previewDoc.name}
                 className="w-full h-auto rounded-lg"
               />
