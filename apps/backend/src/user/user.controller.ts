@@ -11,13 +11,20 @@ import {
   Put,
   UseGuards,
 } from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { User as UserModel } from '@prisma/client';
-import bcrypt from 'bcryptjs';
 import { CreateUserInput, LoginInput, UserDTO } from '@repo/shared-types/user';
+import bcrypt from 'bcryptjs';
 import { AuthService } from '../auth/auth.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { UserService } from './user.service';
 
+@ApiTags('Users')
 @Controller('user')
 export class UserController {
   constructor(
@@ -29,6 +36,9 @@ export class UserController {
 
   // @UseGuards(JwtAuthGuard)
   @Get(':id')
+  @ApiOperation({ summary: 'Get user by ID' })
+  @ApiResponse({ status: 200, description: 'User found' })
+  @ApiResponse({ status: 404, description: 'User not found' })
   async getUser(@Param('id') id: string) {
     this.logger.log(`Fetching user with ID: ${id}`);
 
@@ -36,13 +46,20 @@ export class UserController {
       userId: id,
     });
 
-    if (user !== null) {
-      return user;
+    if (!user) {
+      throw new HttpException('User not found', HttpStatus.NOT_FOUND);
     }
-    return 'User not found';
+
+    return user;
   }
 
   @Post('login')
+  @ApiOperation({ summary: 'User login' })
+  @ApiResponse({
+    status: 200,
+    description: 'Login successful, returns JWT token',
+  })
+  @ApiResponse({ status: 401, description: 'Invalid credentials' })
   async login(@Body() loginData: LoginInput) {
     const { email, password } = loginData;
 
@@ -63,6 +80,9 @@ export class UserController {
   }
 
   @Post()
+  @ApiOperation({ summary: 'Register new user' })
+  @ApiResponse({ status: 201, description: 'User created successfully' })
+  @ApiResponse({ status: 400, description: 'Email already exists' })
   async createUser(@Body() user: CreateUserInput): Promise<UserModel> {
     try {
       return await this.userService.createUser({
@@ -86,23 +106,48 @@ export class UserController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
   @Put(':id')
-  updateUser(
+  @ApiOperation({ summary: 'Update user' })
+  @ApiResponse({ status: 200, description: 'User updated successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid input data' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async updateUser(
     @Param('id') id: string,
     @Body() user: UserDTO,
   ): Promise<UserModel> {
-    return this.userService.updateUser({
-      where: { userId: id },
-      data: {
-        name: user.name,
-        passwordHash: user.passwordHash,
-      },
-    });
+    try {
+      return await this.userService.updateUser({
+        where: { userId: id },
+        data: {
+          name: user.name,
+          passwordHash: user.passwordHash,
+        },
+      });
+    } catch (error: any) {
+      if (error.code === 'P2025') {
+        throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+      }
+      throw new HttpException('Invalid input data', HttpStatus.BAD_REQUEST);
+    }
   }
 
   @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
   @Delete(':id')
-  deleteUser(@Param('id') id: string): Promise<UserModel> {
-    return this.userService.deleteUser({ userId: id });
+  @ApiOperation({ summary: 'Delete user' })
+  @ApiResponse({ status: 200, description: 'User deleted successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async deleteUser(@Param('id') id: string): Promise<UserModel> {
+    try {
+      return await this.userService.deleteUser({ userId: id });
+    } catch (error: any) {
+      if (error.code === 'P2025') {
+        throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+      }
+      throw error;
+    }
   }
 }

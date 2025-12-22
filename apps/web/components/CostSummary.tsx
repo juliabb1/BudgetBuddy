@@ -1,4 +1,9 @@
-import { ContractDTO, Cycle, CycleSchema } from '@repo/shared-types/contract';
+import {
+  CATEGORY_LABELS,
+  ContractDTO,
+  Cycle,
+  CycleSchema,
+} from '@repo/shared-types/contract';
 import { Calendar, TrendingUp, Wallet } from 'lucide-react';
 import { useState } from 'react';
 import { Card } from './ui/card';
@@ -210,7 +215,7 @@ export function CostSummary({ contracts }: CostSummaryProps) {
                 <div>
                   <div className="text-slate-900">{contract.name}</div>
                   <div className="text-sm text-slate-500">
-                    🏷️ {contract.category}
+                    🏷️ {CATEGORY_LABELS[contract.category]}
                   </div>
                 </div>
                 <div className="text-right">

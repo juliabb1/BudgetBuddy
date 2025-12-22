@@ -1,17 +1,18 @@
+import { ContractDTO } from '@repo/shared-types/contract';
+import { useCurrentUser } from '@web/lib/auth';
+import { Check, Copy, FileDown } from 'lucide-react';
 import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { Button } from './ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
-import { FileDown, Copy, Check } from 'lucide-react';
-import { ContractDTO } from '@repo/shared-types/contract';
 
 interface CancellationDialogProps {
   contract: ContractDTO;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onConfirmCancellation: (contractId: string) => void;
+  onConfirmCancellation: (contract: ContractDTO) => void;
 }
 
 export function CancellationDialog({
@@ -20,11 +21,12 @@ export function CancellationDialog({
   onOpenChange,
   onConfirmCancellation,
 }: CancellationDialogProps) {
-  const [senderName, setSenderName] = useState('');
-  const [senderAddress, setSenderAddress] = useState('');
-  const [senderCity, setSenderCity] = useState('');
+  const userName = useCurrentUser()?.name;
+  const senderEmail = useCurrentUser()?.email;
   const [contractNumber, setContractNumber] = useState('');
+  const [senderName, setSenderName] = useState(userName || '');
   const [copied, setCopied] = useState(false);
+  const [terminationDate, setTerminationDate] = useState('');
 
   const today = new Date().toLocaleDateString('de-DE', {
     year: 'numeric',
@@ -32,32 +34,57 @@ export function CancellationDialog({
     day: 'numeric',
   });
 
+  const isToday = (dateString: string) => {
+    if (!dateString) return false;
+    const inputDate = new Date(dateString);
+    const today = new Date();
+    return (
+      inputDate.getFullYear() === today.getFullYear() &&
+      inputDate.getMonth() === today.getMonth() &&
+      inputDate.getDate() === today.getDate()
+    );
+  };
+
   const generateCancellationLetter = () => {
-    return `${senderName}
-${senderAddress}
-${senderCity}
+    // Datum heute als lesbarer Text
+    const todayText = new Date().toLocaleDateString('de-DE', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
 
-${contract.name}
-[Adresse des Anbieters]
+    let terminationText = 'fristgerecht zum nächstmöglichen Zeitpunkt';
+    if (terminationDate) {
+      if (!isToday(terminationDate)) {
+        terminationText = `zum ${new Date(terminationDate).toLocaleDateString(
+          'de-DE',
+          {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+          },
+        )}`;
+      }
+      // Wenn terminationDate == heute, bleibt terminationText wie bisher
+    }
 
-${today}
-
-Kündigung des Vertrages ${contractNumber ? `Nr. ${contractNumber}` : ''}
+    return `
+${todayText}
 
 Sehr geehrte Damen und Herren,
 
-hiermit kündige ich meinen Vertrag "${contract.name}"${contractNumber ? ` (Vertragsnummer: ${contractNumber})` : ''} fristgerecht zum nächstmöglichen Zeitpunkt.
+hiermit kündige ich meinen Vertrag '${contract.name}'${
+      contractNumber ? ` (Vertragsnummer: ${contractNumber})` : ''
+    } ${terminationText}.
 
 Bitte senden Sie mir eine schriftliche Kündigungsbestätigung mit Angabe des Beendigungszeitpunktes zu.
 
-Für eventuell erfolgende Rückfragen bin ich unter den oben genannten Kontaktdaten erreichbar.
+Für eventuell erfolgende Rückfragen bin ich unter der E-Mail '${senderEmail}' erreichbar.
+
 
 Mit freundlichen Grüßen
-
 ${senderName}
-
-__________________
-Unterschrift`;
+`;
   };
 
   const cancellationLetter = generateCancellationLetter();
@@ -85,10 +112,10 @@ Unterschrift`;
   const handleConfirm = () => {
     if (
       window.confirm(
-        `Möchten Sie den Vertrag "${contract.name}" wirklich kündigen und aus der Liste entfernen?`,
+        `Möchten Sie den Vertrag "${contract.name}" wirklich kündigen?`,
       )
     ) {
-      onConfirmCancellation(contract.contractId);
+      onConfirmCancellation(contract);
       onOpenChange(false);
     }
   };
@@ -135,22 +162,13 @@ Unterschrift`;
           </div>
 
           <div>
-            <Label htmlFor="senderAddress">Straße und Hausnummer *</Label>
+            <Label htmlFor="terminationDate">Kündigungsdatum (optional)</Label>
             <Input
-              id="senderAddress"
-              value={senderAddress}
-              onChange={(e) => setSenderAddress(e.target.value)}
-              placeholder="Musterstraße 123"
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="senderCity">PLZ und Ort *</Label>
-            <Input
-              id="senderCity"
-              value={senderCity}
-              onChange={(e) => setSenderCity(e.target.value)}
-              placeholder="12345 Musterstadt"
+              id="terminationDate"
+              type="date"
+              value={terminationDate}
+              onChange={(e) => setTerminationDate(e.target.value)}
+              placeholder="TT.MM.JJJJ"
             />
           </div>
 
@@ -165,7 +183,7 @@ Unterschrift`;
                   variant="outline"
                   size="sm"
                   onClick={handleCopy}
-                  disabled={!senderName || !senderAddress || !senderCity}
+                  disabled={!senderName || !senderEmail}
                   className={
                     copied
                       ? 'border-green-300 bg-green-50'
@@ -189,7 +207,7 @@ Unterschrift`;
                   variant="outline"
                   size="sm"
                   onClick={handleDownload}
-                  disabled={!senderName || !senderAddress || !senderCity}
+                  disabled={!senderName}
                   className="hover:border-blue-300"
                 >
                   <FileDown className="w-4 h-4 mr-2" />
@@ -216,17 +234,9 @@ Unterschrift`;
           <div className="flex gap-3 justify-end pt-4 border-t border-orange-200">
             <Button
               type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              className="hover:border-orange-300"
-            >
-              Abbrechen
-            </Button>
-            <Button
-              type="button"
               variant="destructive"
               onClick={handleConfirm}
-              disabled={!senderName || !senderAddress || !senderCity}
+              disabled={!senderName}
               className="bg-linear-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700"
             >
               🗑️ Vertrag kündigen & entfernen
