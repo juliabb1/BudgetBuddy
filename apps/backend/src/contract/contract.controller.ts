@@ -118,9 +118,6 @@ export class ContractController {
         ...(contract.isActive !== undefined && {
           isActive: contract.isActive,
         }),
-        ...(contract.documents !== undefined && {
-          documents: contract.documents,
-        }),
       });
     } catch (error: any) {
       if (error.code === 'P2025') {

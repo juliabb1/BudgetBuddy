@@ -137,7 +137,6 @@ export default function Home() {
             debitDayOfMonth: contract.debitDayOfMonth,
             category: contract.category,
             isActive: contract.isActive,
-            documents: contract.documents,
           }),
         },
       );
