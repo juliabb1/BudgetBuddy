@@ -15,7 +15,11 @@ import {
   TabsList,
   TabsTrigger,
 } from '@web/components/ui/tabs';
-import { ProtectedComponent, useAccessToken } from '@web/lib/auth';
+import {
+  ProtectedComponent,
+  useAccessToken,
+  useCurrentUser,
+} from '@web/lib/auth';
 import { LogOut } from 'lucide-react';
 import { signOut } from 'next-auth/react';
 import Image from 'next/image';
@@ -70,12 +74,9 @@ const mockContracts: ContractDTO[] = [
 ];
 
 export default function Home() {
-  const [currentUser, setCurrentUser] = useState<{
-    name: string;
-    email: string;
-  } | null>();
   const [contracts, setContracts] = useState<ContractDTO[]>(mockContracts);
   const token = useAccessToken();
+  const currentUser = useCurrentUser();
 
   useEffect(() => {
     console.log('Access Token in Home page:', token);
@@ -83,13 +84,16 @@ export default function Home() {
 
     const fetchContracts = async () => {
       try {
-        const res = await fetch(`/api/contracts/me`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/contracts/me`,
+          {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
           },
-        });
+        );
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
           throw new Error(body.message || 'Fehler beim Laden der Verträge');
@@ -105,32 +109,30 @@ export default function Home() {
   }, [token]);
 
   const addContract = async (contract: CreateContractDto) => {
-    const newContract = {
-      ...contract,
-      id: Date.now().toString(),
-    };
-
-    console.log('Creating contract via API route:', contract);
+    console.log('Creating contract:', contract);
 
     try {
-      const res = await fetch('/api/contracts', {
-        method: 'POST',
-        credentials: 'include', // REQUIRED
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/contracts`,
+        {
+          method: 'POST',
+          credentials: 'include', // REQUIRED
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            name: contract.name,
+            price: contract.price,
+            cycle: contract.cycle,
+            startDate: contract.startDate,
+            debitDayOfMonth: contract.debitDayOfMonth,
+            category: contract.category,
+            isActive: contract.isActive,
+            documents: contract.documents,
+          }),
         },
-        body: JSON.stringify({
-          name: contract.name,
-          price: contract.price,
-          cycle: contract.cycle,
-          startDate: contract.startDate,
-          debitDayOfMonth: contract.debitDayOfMonth,
-          category: contract.category,
-          isActive: contract.isActive,
-          documents: contract.documents,
-        }),
-      });
+      );
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -141,14 +143,17 @@ export default function Home() {
       console.log('Contract created:', createdContract);
 
       // Refresh contracts from backend via API route
-      const contractsRes = await fetch('/api/contracts/me', {
-        method: 'GET',
-        credentials: 'include', // REQUIRED
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+      const contractsRes = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/contracts/me`,
+        {
+          method: 'GET',
+          credentials: 'include', // REQUIRED
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
         },
-      });
+      );
 
       if (contractsRes.ok) {
         const updatedContracts = await contractsRes.json();
@@ -165,12 +170,15 @@ export default function Home() {
     const originalContracts = contracts;
     console.log('contractId to delete:', id);
     try {
-      const response = await fetch(`/api/contracts/${id}`, {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token}`,
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/contracts/${id}`,
+        {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         },
-      });
+      );
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -190,14 +198,17 @@ export default function Home() {
     // Store original contracts for potential rollback
     const originalContracts = contracts;
     try {
-      const response = await fetch(`/api/contracts/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/contracts/${id}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(updatedContract),
         },
-        body: JSON.stringify(updatedContract),
-      });
+      );
 
       if (!response.ok) {
         const errorData = await response.json();

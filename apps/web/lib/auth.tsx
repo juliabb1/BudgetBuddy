@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
-import { Button } from "../components/ui/button";
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
+import { Button } from '../components/ui/button';
 
 interface ProtectedComponentProps {
   children: React.ReactNode;
@@ -13,18 +13,18 @@ interface ProtectedComponentProps {
 
 export function ProtectedComponent({
   children,
-  redirectTo = "/login",
+  redirectTo = '/login',
   fallback,
 }: ProtectedComponentProps) {
   const { data: session, status } = useSession();
   const router = useRouter();
 
   useEffect(() => {
-    if (status === "loading") return; // Still loading
+    if (status === 'loading') return; // Still loading
     if (!session) router.push(redirectTo);
   }, [session, status, router, redirectTo]);
 
-  if (status === "loading") {
+  if (status === 'loading') {
     return (
       fallback || (
         <div className="flex items-center justify-center min-h-screen">
