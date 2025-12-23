@@ -26,64 +26,8 @@ import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { Button } from '../components/ui/button';
 
-const mockContracts: ContractDTO[] = [
-  {
-    contractId: '1',
-    name: 'Kfz-Versicherung',
-    price: 780,
-    cycle: CycleSchema.parse('MONTHLY'),
-    startDate: new Date('2024-03-15'),
-    debitDayOfMonth: 1,
-    category: CategorySchema.parse('INSURANCE'),
-    isActive: true,
-    documents: [
-      {
-        documentId: 'd1',
-        contractId: '1',
-        originalName: 'Versicherungsvertrag.pdf',
-        fileName: 'd1-1234567890-abcdef.pdf',
-        filePath: '/uploads/d1-1234567890-abcdef.pdf',
-        fileSize: 245760,
-        mimeType: 'application/pdf',
-        uploadedAt: new Date('2024-03-15T10:00:00Z'),
-        // Frontend compatibility fields
-        id: 'd1',
-        name: 'Versicherungsvertrag.pdf',
-        data: `${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'}/contracts/documents/d1/download`,
-        type: 'application/pdf',
-        uploadDate: new Date('2024-03-15T10:00:00Z').toISOString(),
-      },
-    ],
-    userId: 'cmihd8btq0000ekywb3e8xr62',
-  },
-  {
-    contractId: '2',
-    name: 'Kfz-Steuer',
-    price: 156,
-    cycle: CycleSchema.parse('MONTHLY'),
-    category: CategorySchema.parse('INSURANCE'),
-    startDate: new Date('2024-03-15'),
-    debitDayOfMonth: 1,
-    isActive: true,
-    documents: [],
-    userId: 'cmihd8btq0000ekywb3e8xr62',
-  },
-  {
-    contractId: '3',
-    name: 'Netflix',
-    price: 17.99,
-    cycle: CycleSchema.parse('MONTHLY'),
-    category: CategorySchema.parse('INSURANCE'),
-    startDate: new Date('2024-03-15'),
-    debitDayOfMonth: 1,
-    isActive: true,
-    documents: [],
-    userId: 'cmihd8btq0000ekywb3e8xr62',
-  },
-];
-
 export default function Home() {
-  const [contracts, setContracts] = useState<ContractDTO[]>(mockContracts);
+  const [contracts, setContracts] = useState<ContractDTO[]>([]);
   const token = useAccessToken();
   const currentUser = useCurrentUser();
 
@@ -216,7 +160,7 @@ export default function Home() {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify(updatedContract),
+          body: JSON.stringify(contractUpdate),
         },
       );
 
