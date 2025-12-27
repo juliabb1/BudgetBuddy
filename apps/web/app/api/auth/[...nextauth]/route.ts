@@ -1,30 +1,32 @@
-import NextAuth, { AuthOptions } from "next-auth";
-import CredentialsProvider from "next-auth/providers/credentials";
+import NextAuth, { AuthOptions } from 'next-auth';
+import CredentialsProvider from 'next-auth/providers/credentials';
 
-export const authOptions: AuthOptions = {
+const authOptions: AuthOptions = {
   providers: [
     CredentialsProvider({
-      name: "Credentials",
+      name: 'Credentials',
       credentials: {
-        email: { label: "Email", type: "text" },
-        password: { label: "Password", type: "password" },
+        email: { label: 'Email', type: 'text' },
+        password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
 
         const backendUrl =
-          process.env.BACKEND_URL ?? process.env.NEXT_PUBLIC_BACKEND_URL;
+          process.env.API_URL ??
+          process.env.BACKEND_URL ??
+          process.env.NEXT_PUBLIC_BACKEND_URL;
 
         if (!backendUrl) {
-          console.error("BACKEND_URL not configured");
+          console.error('BACKEND_URL not configured');
           return null;
         }
 
         try {
           const response = await fetch(`${backendUrl}/user/login`, {
-            method: "POST",
+            method: 'POST',
             headers: {
-              "Content-Type": "application/json",
+              'Content-Type': 'application/json',
             },
             body: JSON.stringify({
               email: credentials.email,
@@ -33,27 +35,27 @@ export const authOptions: AuthOptions = {
           });
 
           if (!response.ok) {
-            console.error("Login failed:", response.status);
+            console.error('Login failed:', response.status);
             return null;
           }
 
           const data = await response.json();
           // Store the JWT token from backend in user object
           return {
-            id: data.user.userId,
+            id: data.user.id,
             name: data.user.name,
             email: data.user.email,
             accessToken: data.access_token,
           };
         } catch (error) {
-          console.error("Login error:", error);
+          console.error('Login error:', error);
           return null;
         }
       },
     }),
   ],
   session: {
-    strategy: "jwt",
+    strategy: 'jwt',
     maxAge: 1 * 24 * 60 * 60, // 1 day
     updateAge: 60 * 60, // 60min
   },
@@ -74,7 +76,7 @@ export const authOptions: AuthOptions = {
     },
   },
   pages: {
-    signIn: "/login",
+    signIn: '/login',
   },
 };
 
