@@ -40,7 +40,7 @@ services:
     restart: always
     environment:
       NODE_ENV: production
-      API_URL: http://backend:3001
+      NEXT_PUBLIC_BACKEND_URL: http://localhost:3001
       NEXTAUTH_SECRET: supersecret_change_me
     depends_on:
       - backend

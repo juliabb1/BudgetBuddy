@@ -9,16 +9,21 @@ import {
   Post,
   Put,
   Req,
+  Res,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
+  ApiConsumes,
   ApiOperation,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { CreateContractDto } from '@repo/shared-types/contract';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ContractService } from './contract.service';
 
@@ -95,7 +100,7 @@ export class ContractController {
   @ApiResponse({ status: 404, description: 'Contract not found' })
   async updateContract(
     @Param('id') contractId: string,
-    @Body() contract: Partial<CreateContractDto>,
+    @Body() contract: Partial<Omit<CreateContractDto, 'documents'>>,
   ) {
     try {
       return await this.contractService.updateContract(contractId, {
@@ -112,9 +117,6 @@ export class ContractController {
         ...(contract.category !== undefined && { category: contract.category }),
         ...(contract.isActive !== undefined && {
           isActive: contract.isActive,
-        }),
-        ...(contract.documents !== undefined && {
-          documents: contract.documents,
         }),
       });
     } catch (error: any) {
@@ -140,6 +142,101 @@ export class ContractController {
       }
       throw new HttpException(
         'Error deleting contract',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/documents')
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Upload document for contract' })
+  @ApiResponse({ status: 201, description: 'Document uploaded successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid file or contract' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async uploadDocument(
+    @Param('id') contractId: string,
+    @UploadedFile() file: any, // Express.Multer.File
+  ) {
+    if (!file) {
+      throw new HttpException('No file provided', HttpStatus.BAD_REQUEST);
+    }
+
+    // Validate file size (5MB limit)
+    if (file.size > 5 * 1024 * 1024) {
+      throw new HttpException(
+        'File too large (max 5MB)',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    // Validate file type
+    const allowedTypes = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+    ];
+
+    if (!allowedTypes.includes(file.mimetype)) {
+      throw new HttpException('Invalid file type', HttpStatus.BAD_REQUEST);
+    }
+
+    try {
+      return await this.contractService.addDocument(contractId, file);
+    } catch (error: any) {
+      throw new HttpException(
+        error.message || 'Error uploading document',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete('documents/:documentId')
+  @ApiOperation({ summary: 'Delete document' })
+  @ApiResponse({ status: 200, description: 'Document deleted successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'Document not found' })
+  async deleteDocument(@Param('documentId') documentId: string) {
+    try {
+      return await this.contractService.deleteDocument(documentId);
+    } catch (error: any) {
+      throw new HttpException(
+        error.message || 'Error deleting document',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('documents/:documentId/download')
+  @ApiOperation({ summary: 'Download document file' })
+  @ApiResponse({ status: 200, description: 'File download' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'Document not found' })
+  async downloadDocument(
+    @Param('documentId') documentId: string,
+    @Res() res: Response,
+  ) {
+    try {
+      const { filePath, document } =
+        await this.contractService.getDocumentFile(documentId);
+
+      res.setHeader('Content-Type', document.mimeType);
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="${document.originalName}"`,
+      );
+
+      const fileStream = require('fs').createReadStream(filePath);
+      fileStream.pipe(res);
+    } catch (error: any) {
+      throw new HttpException(
+        error.message || 'Error downloading document',
         HttpStatus.BAD_REQUEST,
       );
     }

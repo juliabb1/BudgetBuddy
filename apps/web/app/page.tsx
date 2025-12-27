@@ -1,10 +1,5 @@
 'use client';
-import {
-  CategorySchema,
-  ContractDTO,
-  CreateContractDto,
-  CycleSchema,
-} from '@repo/shared-types/contract';
+import { ContractDTO, CreateContractDto } from '@repo/shared-types/contract';
 import { ContractChart } from '@web/components/ContractChart';
 import { ContractForm } from '@web/components/ContractForm';
 import { ContractList } from '@web/components/ContractList';
@@ -26,60 +21,12 @@ import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { Button } from '../components/ui/button';
 
-const mockContracts: ContractDTO[] = [
-  {
-    contractId: '1',
-    name: 'Kfz-Versicherung',
-    price: 780,
-    cycle: CycleSchema.parse('MONTHLY'),
-    startDate: new Date('2024-03-15'),
-    debitDayOfMonth: 1,
-    category: CategorySchema.parse('INSURANCE'),
-    isActive: true,
-    documents: [
-      {
-        id: 'd1',
-        name: 'Versicherungsvertrag.pdf',
-        data: 'data:application/pdf;base64,JVBERi0xLjQKJcfs...',
-        type: 'application/pdf',
-        uploadDate: new Date().toISOString(),
-      },
-    ],
-    userId: 'cmihd8btq0000ekywb3e8xr62',
-  },
-  {
-    contractId: '2',
-    name: 'Kfz-Steuer',
-    price: 156,
-    cycle: CycleSchema.parse('MONTHLY'),
-    category: CategorySchema.parse('INSURANCE'),
-    startDate: new Date('2024-03-15'),
-    debitDayOfMonth: 1,
-    isActive: true,
-    documents: [],
-    userId: 'cmihd8btq0000ekywb3e8xr62',
-  },
-  {
-    contractId: '3',
-    name: 'Netflix',
-    price: 17.99,
-    cycle: CycleSchema.parse('MONTHLY'),
-    category: CategorySchema.parse('INSURANCE'),
-    startDate: new Date('2024-03-15'),
-    debitDayOfMonth: 1,
-    isActive: true,
-    documents: [],
-    userId: 'cmihd8btq0000ekywb3e8xr62',
-  },
-];
-
 export default function Home() {
-  const [contracts, setContracts] = useState<ContractDTO[]>(mockContracts);
+  const [contracts, setContracts] = useState<ContractDTO[]>([]);
   const token = useAccessToken();
   const currentUser = useCurrentUser();
 
   useEffect(() => {
-    console.log('Access Token in Home page:', token);
     if (!token) return; // Wait until token is available
 
     const fetchContracts = async () => {
@@ -129,7 +76,6 @@ export default function Home() {
             debitDayOfMonth: contract.debitDayOfMonth,
             category: contract.category,
             isActive: contract.isActive,
-            documents: contract.documents,
           }),
         },
       );
@@ -193,11 +139,14 @@ export default function Home() {
 
   const updateContract = async (
     id: string,
-    updatedContract: Omit<ContractDTO, 'contractId'>,
+    updatedContract: Partial<Omit<ContractDTO, 'contractId'>>,
   ) => {
     // Store original contracts for potential rollback
     const originalContracts = contracts;
     try {
+      // Remove documents from update payload since they're handled separately
+      const { documents, ...contractUpdate } = updatedContract;
+
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/contracts/${id}`,
         {
@@ -206,7 +155,7 @@ export default function Home() {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify(updatedContract),
+          body: JSON.stringify(contractUpdate),
         },
       );
 
@@ -217,9 +166,10 @@ export default function Home() {
 
       const data = await response.json();
       // Update with server response to ensure consistency
+      // Merge with existing contract data to preserve all fields
       setContracts(
         contracts.map((contract) =>
-          contract.contractId === id ? data : contract,
+          contract.contractId === id ? { ...contract, ...data } : contract,
         ),
       );
     } catch (err: any) {
@@ -307,6 +257,8 @@ export default function Home() {
                 contracts={contracts}
                 onDeleteContract={deleteContract}
                 onUpdateContract={updateContract}
+                onUpdateContracts={setContracts}
+                token={token || ''}
               />
             </TabsContent>
 
