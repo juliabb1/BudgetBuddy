@@ -1,102 +1,21 @@
-import {
-  CATEGORY_LABELS,
-  ContractDTO,
-  Cycle,
-  CycleSchema,
-} from '@repo/shared-types/contract';
-import { Calendar, TrendingUp, Wallet } from 'lucide-react';
-import { useState } from 'react';
+import { CATEGORY_LABELS, ContractDTO } from '@repo/shared-types/contract';
+import { useCostCalculations } from '../hooks/useCostCalculations';
+import { CYCLE_LABELS, formatCurrency } from '../lib/contractUtils';
 import { Card } from './ui/card';
 
 interface CostSummaryProps {
   contracts: ContractDTO[];
 }
 
-type TimeFrame = ContractDTO['cycle'];
-
 export function CostSummary({ contracts }: CostSummaryProps) {
-  const [selectedTimeFrame, setSelectedTimeFrame] = useState<Cycle>(
-    CycleSchema.parse('MONTHLY'),
-  );
-
-  const calculateTotal = (timeFrame: TimeFrame): number => {
-    return contracts.reduce((total, contract) => {
-      const price = Number(contract.price) || 0; // <-- ensure number
-      let monthlyAmount = 0;
-
-      switch (contract.cycle) {
-        case 'MONTHLY':
-          monthlyAmount = price;
-          break;
-        case 'QUARTERLY':
-          monthlyAmount = price / 3;
-          break;
-        case 'HALF_YEARLY':
-          monthlyAmount = price / 6;
-          break;
-        case 'YEARLY':
-          monthlyAmount = price / 12;
-          break;
-      }
-
-      switch (timeFrame) {
-        case 'MONTHLY':
-          return total + monthlyAmount;
-        case 'QUARTERLY':
-          return total + monthlyAmount * 3;
-        case 'HALF_YEARLY':
-          return total + monthlyAmount * 6;
-        case 'YEARLY':
-          return total + monthlyAmount * 12;
-      }
-
-      return total;
-    }, 0);
-  };
-
-  const monthlyTotal = calculateTotal('MONTHLY');
-  const quarterlyTotal = calculateTotal('QUARTERLY');
-  const halfYearlyTotal = calculateTotal('HALF_YEARLY');
-  const yearlyTotal = calculateTotal('YEARLY');
-
-  const timeFrameData = [
-    {
-      id: 'MONTHLY' as TimeFrame,
-      label: 'Monatlich',
-      amount: monthlyTotal, // unified field name
-      icon: Calendar,
-      gradient: 'from-emerald-500 to-teal-500',
-      bgLight: 'bg-emerald-50',
-      textColor: 'text-emerald-600',
-    },
-    {
-      id: 'QUARTERLY' as TimeFrame,
-      label: 'Vierteljährlich',
-      amount: quarterlyTotal,
-      icon: TrendingUp,
-      gradient: 'from-green-500 to-emerald-500',
-      bgLight: 'bg-green-50',
-      textColor: 'text-green-600',
-    },
-    {
-      id: 'HALF_YEARLY' as TimeFrame,
-      label: 'Halbjährlich',
-      amount: halfYearlyTotal,
-      icon: TrendingUp,
-      gradient: 'from-green-500 to-emerald-500',
-      bgLight: 'bg-green-50',
-      textColor: 'text-green-600',
-    },
-    {
-      id: 'YEARLY' as TimeFrame,
-      label: 'Jährlich',
-      amount: yearlyTotal,
-      icon: Wallet,
-      gradient: 'from-teal-500 to-cyan-500',
-      bgLight: 'bg-teal-50',
-      textColor: 'text-teal-600',
-    },
-  ];
+  const {
+    selectedTimeFrame,
+    setSelectedTimeFrame,
+    timeFrameData,
+    monthlyTotal,
+    getTimeFrameLabel,
+    calculateContractDisplay,
+  } = useCostCalculations(contracts);
 
   return (
     <Card className="p-6 bg-white/80 backdrop-blur-sm border-white shadow-sm">
@@ -147,7 +66,7 @@ export function CostSummary({ contracts }: CostSummaryProps) {
               <div
                 className={`text-2xl ${isSelected ? 'text-white' : timeFrame.textColor}`}
               >
-                {Number(timeFrame.amount).toFixed(2)} €
+                {formatCurrency(timeFrame.amount)}
               </div>
             </button>
           );
@@ -160,52 +79,14 @@ export function CostSummary({ contracts }: CostSummaryProps) {
             📊 Detaillierte Aufschlüsselung
           </h3>
           <span className="text-sm text-slate-600 bg-white px-4 py-2 rounded-full shadow-sm border border-slate-200">
-            {selectedTimeFrame === 'MONTHLY' && '📅 Pro Monat'}
-            {selectedTimeFrame === 'QUARTERLY' && '📆 Pro Quartal'}
-            {selectedTimeFrame === 'HALF_YEARLY' && '📆 Pro Halbjahr'}
-            {selectedTimeFrame === 'YEARLY' && '🗓️ Pro Jahr'}
+            {getTimeFrameLabel(selectedTimeFrame)}
           </span>
         </div>
 
         <div className="space-y-3">
           {contracts.map((contract, index) => {
-            const key = contract.contractId
-              ? contract.contractId
-              : `contract-${index}`;
-
-            const price = Number(contract.price) || 0;
-            let monthlyAmount = 0;
-
-            switch (contract.cycle) {
-              case 'MONTHLY':
-                monthlyAmount = price;
-                break;
-              case 'QUARTERLY':
-                monthlyAmount = price / 3;
-                break;
-              case 'HALF_YEARLY':
-                monthlyAmount = price / 6;
-                break;
-              case 'YEARLY':
-                monthlyAmount = price / 12;
-                break;
-            }
-
-            let displayAmount = 0;
-            switch (selectedTimeFrame) {
-              case 'MONTHLY':
-                displayAmount = monthlyAmount;
-                break;
-              case 'QUARTERLY':
-                displayAmount = monthlyAmount * 3;
-                break;
-              case 'HALF_YEARLY':
-                displayAmount = monthlyAmount * 6;
-                break;
-              case 'YEARLY':
-                displayAmount = monthlyAmount * 12;
-                break;
-            }
+            const key = contract.contractId || `contract-${index}`;
+            const { amount, cycleIcon } = calculateContractDisplay(contract);
 
             return (
               <div
@@ -220,13 +101,10 @@ export function CostSummary({ contracts }: CostSummaryProps) {
                 </div>
                 <div className="text-right">
                   <div className="text-lg bg-linear-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
-                    {displayAmount.toFixed(2)} €
+                    {formatCurrency(amount)}
                   </div>
                   <div className="text-xs text-slate-500">
-                    {contract.cycle === 'MONTHLY' && '📅 Monatlich'}
-                    {contract.cycle === 'QUARTERLY' && '📊 Vierteljährlich'}
-                    {contract.cycle === 'HALF_YEARLY' && '📆 Halbjährlich'}
-                    {contract.cycle === 'YEARLY' && '🗓️ Jährlich'}
+                    {cycleIcon} {CYCLE_LABELS[contract.cycle]}
                   </div>
                 </div>
               </div>
@@ -240,7 +118,7 @@ export function CostSummary({ contracts }: CostSummaryProps) {
               💵 Monatlich zurücklegen:
             </span>
             <span className="text-2xl bg-linear-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
-              {monthlyTotal.toFixed(2)} €
+              {formatCurrency(monthlyTotal)}
             </span>
           </div>
         </div>
