@@ -20,14 +20,6 @@
     "forceConsistentCasingInFileNames": true,
     "noImplicitAny": false,
     "strictBindCallApply": false,
-    "noFallthroughCasesInSwitch": false,
-    "compilerOptions": {
-      "baseUrl": "./",
-      "incremental": true,
-      "paths": {
-        "@repo/shared-types": ["../../packages/shared-types/dist/index.ts"],
-        "@repo/shared-types/*": ["../../packages/shared-types/dist/*"]
-      }
-    }
+    "noFallthroughCasesInSwitch": false
   }
 }
