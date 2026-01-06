@@ -186,7 +186,11 @@ export function ContractChart({ contracts }: ContractChartProps) {
                 <XAxis dataKey="category" />
                 <YAxis />
                 <Tooltip
-                  formatter={(value: number) => `${value.toFixed(2)} €`}
+                  formatter={(value) =>
+                    typeof value === 'number'
+                      ? `${value.toFixed(2)} €`
+                      : `${value} €`
+                  }
                   contentStyle={{ borderRadius: '8px' }}
                 />
                 <Legend />
@@ -237,7 +241,11 @@ export function ContractChart({ contracts }: ContractChartProps) {
                   ))}
                 </Pie>
                 <Tooltip
-                  formatter={(value: number) => `${value.toFixed(2)} € / Monat`}
+                  formatter={(value) =>
+                    typeof value === 'number'
+                      ? `${value.toFixed(2)} € / Monat`
+                      : `${value} € / Monat`
+                  }
                   contentStyle={{ borderRadius: '8px' }}
                 />
               </PieChart>

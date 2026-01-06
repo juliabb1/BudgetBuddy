@@ -1,10 +1,5 @@
 'use client';
-import {
-  CategorySchema,
-  ContractDTO,
-  CreateContractDto,
-  CycleSchema,
-} from '@repo/shared-types/contract';
+import { ContractDTO, CreateContractDto } from '@repo/shared-types/contract';
 import { ContractChart } from '@web/components/ContractChart';
 import { ContractForm } from '@web/components/ContractForm';
 import { ContractList } from '@web/components/ContractList';
