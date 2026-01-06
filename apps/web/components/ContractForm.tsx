@@ -49,7 +49,6 @@ export function ContractForm({ onAddContract }: ContractFormProps) {
       category,
       debitDayOfMonth: 1,
       isActive: true,
-      documents: [],
     });
 
     // Reset form
