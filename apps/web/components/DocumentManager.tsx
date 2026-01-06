@@ -24,6 +24,7 @@ export function DocumentManager({
 }: DocumentManagerProps & { contractId: string }) {
   const [isUploading, setIsUploading] = useState(false);
   const [previewDoc, setPreviewDoc] = useState<Document | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
 
   const uploadFile = async (file: File) => {
@@ -71,15 +72,59 @@ export function DocumentManager({
     e.target.value = '';
   };
 
-  const handleDownload = (doc: Document) => {
-    const link = document.createElement('a');
-    link.href = doc.data; // This is now the download URL
-    link.target = '_blank'; // Open in new tab for download
-    link.click();
+  const handleDownload = async (doc: Document) => {
+    try {
+      const response = await fetch(doc.data, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Download failed');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = doc.name; // Use the document name for download
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // Clean up the object URL
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Download error:', error);
+      alert('Fehler beim Herunterladen der Datei');
+    }
   };
 
-  const handlePreview = (doc: Document) => {
-    setPreviewDoc(doc);
+  const handlePreview = async (doc: Document) => {
+    try {
+      const response = await fetch(doc.data, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Preview failed');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+
+      setPreviewUrl(url);
+      setPreviewDoc(doc);
+    } catch (error) {
+      console.error('Preview error:', error);
+      alert('Fehler beim Laden der Vorschau');
+    }
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -243,17 +288,30 @@ export function DocumentManager({
         )}
       </div>
 
-      <Dialog open={!!previewDoc} onOpenChange={() => setPreviewDoc(null)}>
+      <Dialog
+        open={!!previewDoc}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPreviewDoc(null);
+            if (previewUrl) {
+              window.URL.revokeObjectURL(previewUrl);
+              setPreviewUrl(null);
+            }
+          }
+        }}
+      >
         <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>{previewDoc?.name}</DialogTitle>
           </DialogHeader>
-          {previewDoc && (
+          {previewDoc && previewUrl && (
             <div className="mt-4">
               <Image
-                src={previewDoc.data}
+                src={previewUrl}
                 alt={previewDoc.name}
                 className="w-full h-auto rounded-lg"
+                width={800}
+                height={600}
               />
             </div>
           )}
