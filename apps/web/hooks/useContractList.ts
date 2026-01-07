@@ -9,6 +9,7 @@ export function useContractList(
   onUpdateContracts: (contracts: ContractDTO[]) => void,
   contracts: ContractDTO[],
   token: string,
+  onDeleteContract: (id: string) => void,
 ) {
   const [editingContract, setEditingContract] = useState<ContractDTO | null>(
     null,
@@ -44,6 +45,15 @@ export function useContractList(
   const handleCancelContract = (contract: ContractDTO) => {
     setCancellingContract(contract);
     setIsCancellationDialogOpen(true);
+  };
+
+  const handleDeleteContract = (contract: ContractDTO) => {
+    const confirmed = window.confirm(
+      `Möchten Sie den Vertrag "${contract.name}" wirklich löschen?\n\nDiese Aktion kann nicht rückgängig gemacht werden.`,
+    );
+    if (confirmed) {
+      onDeleteContract(contract.contractId);
+    }
   };
 
   const handleConfirmCancellation = (contract: ContractDTO) => {
@@ -116,6 +126,18 @@ export function useContractList(
     }
   };
 
+  const getCycleBadgeClass = (cycle: ContractDTO['cycle']): string => {
+    return `${getCycleColor(cycle)} shadow-sm`;
+  };
+
+  const isContractCancelled = (contract: ContractDTO): boolean => {
+    return !contract.isActive;
+  };
+
+  const getCancelledBadgeText = (): string => {
+    return 'Gekündigt';
+  };
+
   const updateEditingContract = (updates: Partial<ContractDTO>) => {
     if (editingContract) {
       setEditingContract({ ...editingContract, ...updates });
@@ -144,6 +166,16 @@ export function useContractList(
 
   const getDocumentCount = (contract: ContractDTO): number => {
     return (contract.documents ?? []).length;
+  };
+
+  const hasDocuments = (contract: ContractDTO): boolean => {
+    return getDocumentCount(contract) > 0;
+  };
+
+  const getDocumentBadgeClass = (contract: ContractDTO): string => {
+    return `text-sm bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full ${
+      hasDocuments(contract) ? '' : 'invisible'
+    }`;
   };
 
   const formatPrice = (price: number): string => {
@@ -225,15 +257,21 @@ export function useContractList(
     handleEdit,
     handleUpdate,
     handleCancelContract,
+    handleDeleteContract,
     handleConfirmCancellation,
     handleAddDocument,
     handleDeleteDocument,
     handleDeleteConfirmation,
     getCycleColor,
+    getCycleBadgeClass,
+    isContractCancelled,
+    getCancelledBadgeText,
     updateEditingContract,
     getFormattedEditStartDate,
     getContractKey,
     getDocumentCount,
+    hasDocuments,
+    getDocumentBadgeClass,
     formatPrice,
     formatStartDate,
     updateEditingPrice,

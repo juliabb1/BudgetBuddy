@@ -58,13 +58,19 @@ export function ContractList({
     handleEdit,
     handleUpdate,
     handleCancelContract,
+    handleDeleteContract,
     handleConfirmCancellation,
     getCycleColor,
+    getCycleBadgeClass,
+    isContractCancelled,
+    getCancelledBadgeText,
     handleDeleteDocument,
     handleAddDocument,
     getFormattedEditStartDate,
     getContractKey,
     getDocumentCount,
+    hasDocuments,
+    getDocumentBadgeClass,
     formatPrice,
     formatStartDate,
     updateEditingPrice,
@@ -73,7 +79,13 @@ export function ContractList({
     updateEditingCategory,
     updateEditingIsActive,
     updateEditingName,
-  } = useContractList(onUpdateContract, onUpdateContracts, contracts, token);
+  } = useContractList(
+    onUpdateContract,
+    onUpdateContracts,
+    contracts,
+    token,
+    onDeleteContract,
+  );
 
   if (contracts.length === 0) {
     return (
@@ -113,23 +125,21 @@ export function ContractList({
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
                     <h3>{contract.name}</h3>
-                    <Badge
-                      className={`${getCycleColor(contract.cycle)} shadow-sm`}
-                    >
+                    <Badge className={getCycleBadgeClass(contract.cycle)}>
                       {CYCLE_LABELS[contract.cycle]}
                     </Badge>
-                    {!contract.isActive && (
+                    {isContractCancelled(contract) && (
                       <Badge className="bg-linear-to-r from-red-500 to-red-500 text-white shadow-sm">
-                        {contract.isActive ? '' : 'Gekündigt'}
+                        {getCancelledBadgeText()}
                       </Badge>
                     )}
-                    {(contract.documents ?? []).length > 0 && (
+                    {hasDocuments(contract) && (
                       <Badge
                         variant="outline"
                         className="gap-1 bg-white/80 backdrop-blur-sm"
                       >
                         <FileText className="w-3 h-3" />
-                        {(contract.documents ?? []).length}
+                        {getDocumentCount(contract)}
                       </Badge>
                     )}
                   </div>
@@ -191,14 +201,7 @@ export function ContractList({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => {
-                      const confirmed = window.confirm(
-                        `Möchten Sie den Vertrag "${contract.name}" wirklich löschen?\n\nDiese Aktion kann nicht rückgängig gemacht werden.`,
-                      );
-                      if (confirmed) {
-                        onDeleteContract(contract.contractId);
-                      }
-                    }}
+                    onClick={() => handleDeleteContract(contract)}
                     className="bg-white/80 hover:bg-red-50 hover:border-red-300 transition-all"
                   >
                     <Trash2 className="w-4 h-4 text-red-600" />
@@ -217,10 +220,8 @@ export function ContractList({
                   <div className="flex items-center gap-2">
                     <FileText className="w-4 h-4 text-emerald-600" />
                     <span>📎 Dokumente & Unterlagen</span>
-                    <span
-                      className={`text-sm bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full ${(contract.documents ?? []).length > 0 ? '' : 'invisible'}`}
-                    >
-                      {(contract.documents ?? []).length}
+                    <span className={getDocumentBadgeClass(contract)}>
+                      {getDocumentCount(contract)}
                     </span>
                   </div>
                 </AccordionTrigger>
