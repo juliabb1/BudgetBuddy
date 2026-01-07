@@ -1,12 +1,14 @@
-import { ContractDTO } from '@repo/shared-types/contract';
+import { ContractDTO, Document } from '@repo/shared-types/contract';
 import { useState } from 'react';
-import { Document } from '../components/DocumentManager';
 
 export function useContractList(
   onUpdateContract: (
     contractId: string,
-    contract: Omit<ContractDTO, 'contractId'>,
+    contract: Partial<Omit<ContractDTO, 'contractId' | 'userId' | 'documents'>>,
   ) => void,
+  onUpdateContracts: (contracts: ContractDTO[]) => void,
+  contracts: ContractDTO[],
+  token: string,
 ) {
   const [editingContract, setEditingContract] = useState<ContractDTO | null>(
     null,
@@ -26,7 +28,6 @@ export function useContractList(
     e.preventDefault();
     if (editingContract) {
       onUpdateContract(editingContract.contractId, {
-        userId: editingContract.userId,
         name: editingContract.name,
         price: Number(editingContract.price),
         cycle: editingContract.cycle,
@@ -34,7 +35,6 @@ export function useContractList(
         isActive: editingContract.isActive,
         debitDayOfMonth: 1,
         category: editingContract.category,
-        documents: editingContract.documents,
       });
       setIsDialogOpen(false);
       setEditingContract(null);
@@ -48,58 +48,72 @@ export function useContractList(
 
   const handleConfirmCancellation = (contract: ContractDTO) => {
     onUpdateContract(contract.contractId, {
-      name: contract.name,
-      price: Number(contract.price),
-      cycle: contract.cycle,
-      category: contract.category,
-      startDate: contract.startDate,
-      debitDayOfMonth: contract.debitDayOfMonth ?? 1,
-      documents: contract.documents,
-      userId: contract.userId,
       isActive: false,
     });
     setIsCancellationDialogOpen(false);
-  };
-
-  const handleAddDocument = (
-    contracts: ContractDTO[],
-    contractId: string,
-    document: Omit<Document, 'id' | 'uploadDate'>,
-  ) => {
-    const contract = contracts.find((e) => e.contractId === contractId);
-    if (contract) {
-      const newDocument: Document = {
-        ...document,
-        id: Date.now().toString(),
-        uploadDate: new Date().toISOString(),
-      };
-      onUpdateContract(contractId, {
-        ...contract,
-        documents: [...(contract.documents ?? []), newDocument],
-      });
-    }
-  };
-
-  const handleDeleteDocument = (
-    contracts: ContractDTO[],
-    contractId: string,
-    documentId: string,
-  ) => {
-    const contract = contracts.find((e) => e.contractId === contractId);
-    if (contract) {
-      onUpdateContract(contractId, {
-        ...contract,
-        documents: (contract.documents ?? []).filter(
-          (d) => d.id !== documentId,
-        ),
-      });
-    }
   };
 
   const handleDeleteConfirmation = (contractName: string): boolean => {
     return window.confirm(
       `Möchten Sie den Vertrag "${contractName}" wirklich löschen?\n\nDiese Aktion kann nicht rückgängig gemacht werden.`,
     );
+  };
+
+  const handleAddDocument = async (contractId: string, document: Document) => {
+    // Update local state immediately for better UX
+    const updatedContracts = contracts.map((c) =>
+      c.contractId === contractId
+        ? { ...c, documents: [...(c.documents ?? []), document] }
+        : c,
+    );
+    onUpdateContracts(updatedContracts);
+  };
+
+  const handleDeleteDocument = async (
+    contractId: string,
+    documentId: string,
+  ) => {
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/contracts/documents/${documentId}`,
+        {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      if (response.ok) {
+        // Update local state
+        const updatedContracts = contracts.map((c) =>
+          c.contractId === contractId
+            ? {
+                ...c,
+                documents: (c.documents ?? []).filter(
+                  (d) => d.id !== documentId,
+                ),
+              }
+            : c,
+        );
+        onUpdateContracts(updatedContracts);
+      }
+    } catch (error) {
+      console.error('Delete error:', error);
+    }
+  };
+
+  const getCycleColor = (cycle: ContractDTO['cycle']) => {
+    switch (cycle) {
+      case 'MONTHLY':
+        return 'bg-linear-to-r from-emerald-500 to-teal-500 text-white';
+      case 'QUARTERLY':
+        return 'bg-linear-to-r from-green-500 to-emerald-500 text-white';
+      case 'HALF_YEARLY':
+        return 'bg-linear-to-r from-teal-500 to-cyan-500 text-white';
+      case 'YEARLY':
+        return 'bg-linear-to-r from-lime-500 to-green-500 text-white';
+    }
   };
 
   const updateEditingContract = (updates: Partial<ContractDTO>) => {
@@ -132,6 +146,73 @@ export function useContractList(
     return (contract.documents ?? []).length;
   };
 
+  const formatPrice = (price: number): string => {
+    return Number(price).toFixed(2);
+  };
+
+  const formatStartDate = (startDate: Date | string | undefined): string => {
+    if (!startDate) return '';
+    try {
+      return new Date(startDate).toLocaleDateString('de-DE');
+    } catch {
+      return '';
+    }
+  };
+
+  const updateEditingPrice = (value: string) => {
+    if (editingContract) {
+      setEditingContract({
+        ...editingContract,
+        price: parseFloat(value),
+      });
+    }
+  };
+
+  const updateEditingStartDate = (value: string) => {
+    if (editingContract) {
+      setEditingContract({
+        ...editingContract,
+        startDate: new Date(value),
+      });
+    }
+  };
+
+  const updateEditingCycle = (value: string) => {
+    if (editingContract) {
+      setEditingContract({
+        ...editingContract,
+        cycle: value as ContractDTO['cycle'],
+      });
+    }
+  };
+
+  const updateEditingCategory = (value: string) => {
+    if (editingContract) {
+      setEditingContract({
+        ...editingContract,
+        category: value as ContractDTO['category'],
+      });
+    }
+  };
+
+  const updateEditingIsActive = (isActive: boolean) => {
+    if (editingContract) {
+      setEditingContract({
+        ...editingContract,
+        isActive,
+      });
+    }
+  };
+
+  const updateEditingName = (value: string) => {
+    if (editingContract) {
+      setEditingContract({
+        ...editingContract,
+        name: value,
+      });
+    }
+  };
+
   return {
     editingContract,
     setEditingContract,
@@ -148,9 +229,18 @@ export function useContractList(
     handleAddDocument,
     handleDeleteDocument,
     handleDeleteConfirmation,
+    getCycleColor,
     updateEditingContract,
     getFormattedEditStartDate,
     getContractKey,
     getDocumentCount,
+    formatPrice,
+    formatStartDate,
+    updateEditingPrice,
+    updateEditingStartDate,
+    updateEditingCycle,
+    updateEditingCategory,
+    updateEditingIsActive,
+    updateEditingName,
   };
 }

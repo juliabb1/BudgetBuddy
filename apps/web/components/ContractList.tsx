@@ -1,10 +1,12 @@
 import {
   CATEGORY_LABELS,
   ContractDTO,
-  Document,
+  CYCLE_LABELS,
+  getCategoryOptions,
+  getCycleOptions,
 } from '@repo/shared-types/contract';
 import { Calendar, Clipboard, Edit, FileText, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { useContractList } from '../hooks/useContractList';
 import { CancellationDialog } from './CancellationDialog';
 import { DocumentManager } from './DocumentManager';
 import {
@@ -32,7 +34,7 @@ interface ContractListProps {
   onDeleteContract: (id: string) => void;
   onUpdateContract: (
     contractId: string,
-    contract: Partial<Omit<ContractDTO, 'contractId'>>,
+    contract: Partial<Omit<ContractDTO, 'contractId' | 'userId' | 'documents'>>,
   ) => void;
   onUpdateContracts: (contracts: ContractDTO[]) => void;
   token: string;
@@ -45,129 +47,33 @@ export function ContractList({
   onUpdateContracts,
   token,
 }: ContractListProps) {
-  const [editingContract, setEditingContract] = useState<ContractDTO | null>(
-    null,
-  );
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [cancellingContract, setCancellingContract] =
-    useState<ContractDTO | null>(null);
-  const [isCancellationDialogOpen, setIsCancellationDialogOpen] =
-    useState(false);
-
-  const handleEdit = (contract: ContractDTO) => {
-    setEditingContract(contract);
-    setIsDialogOpen(true);
-  };
-
-  const handleUpdate = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (editingContract) {
-      onUpdateContract(editingContract.contractId, {
-        userId: editingContract.userId,
-        name: editingContract.name,
-        price: Number(editingContract.price),
-        cycle: editingContract.cycle,
-        startDate: editingContract.startDate,
-        isActive: editingContract.isActive,
-        debitDayOfMonth: 1,
-        category: editingContract.category,
-        documents: editingContract.documents,
-      });
-      setIsDialogOpen(false);
-      setEditingContract(null);
-    }
-  };
-
-  const handleCancelContract = (contract: ContractDTO) => {
-    setCancellingContract(contract);
-    setIsCancellationDialogOpen(true);
-  };
-
-  const handleConfirmCancellation = (contract: ContractDTO) => {
-    console.log('Kündigung bestätigt für Vertrag:', contract);
-    onUpdateContract(contract.contractId, {
-      name: contract.name,
-      price: Number(contract.price),
-      cycle: contract.cycle,
-      category: contract.category,
-      startDate: contract.startDate,
-      debitDayOfMonth: contract.debitDayOfMonth ?? 1,
-      documents: contract.documents,
-      userId: contract.userId,
-      isActive: false, // jetzt deaktiviert
-    });
-    setIsCancellationDialogOpen(false);
-  };
-
-  const handleAddDocument = async (contractId: string, document: Document) => {
-    // Update local state immediately for better UX
-    const updatedContracts = contracts.map((c) =>
-      c.contractId === contractId
-        ? { ...c, documents: [...(c.documents ?? []), document] }
-        : c,
-    );
-    onUpdateContracts(updatedContracts);
-  };
-
-  const handleDeleteDocument = async (
-    contractId: string,
-    documentId: string,
-  ) => {
-    try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/contracts/documents/${documentId}`,
-        {
-          method: 'DELETE',
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
-      );
-
-      if (response.ok) {
-        // Update local state
-        const updatedContracts = contracts.map((c) =>
-          c.contractId === contractId
-            ? {
-                ...c,
-                documents: (c.documents ?? []).filter(
-                  (d) => d.id !== documentId,
-                ),
-              }
-            : c,
-        );
-        onUpdateContracts(updatedContracts);
-      }
-    } catch (error) {
-      console.error('Delete error:', error);
-    }
-  };
-
-  const getCycleLabel = (cycle: ContractDTO['cycle']) => {
-    switch (cycle) {
-      case 'MONTHLY':
-        return 'Monatlich';
-      case 'QUARTERLY':
-        return 'Vierteljährlich';
-      case 'HALF_YEARLY':
-        return 'Halbjährlich';
-      case 'YEARLY':
-        return 'Jährlich';
-    }
-  };
-
-  const getCycleColor = (cycle: ContractDTO['cycle']) => {
-    switch (cycle) {
-      case 'MONTHLY':
-        return 'bg-linear-to-r from-emerald-500 to-teal-500 text-white';
-      case 'QUARTERLY':
-        return 'bg-linear-to-r from-green-500 to-emerald-500 text-white';
-      case 'HALF_YEARLY':
-        return 'bg-linear-to-r from-teal-500 to-cyan-500 text-white';
-      case 'YEARLY':
-        return 'bg-linear-to-r from-lime-500 to-green-500 text-white';
-    }
-  };
+  const {
+    editingContract,
+    setEditingContract,
+    isDialogOpen,
+    setIsDialogOpen,
+    cancellingContract,
+    isCancellationDialogOpen,
+    setIsCancellationDialogOpen,
+    handleEdit,
+    handleUpdate,
+    handleCancelContract,
+    handleConfirmCancellation,
+    getCycleColor,
+    handleDeleteDocument,
+    handleAddDocument,
+    getFormattedEditStartDate,
+    getContractKey,
+    getDocumentCount,
+    formatPrice,
+    formatStartDate,
+    updateEditingPrice,
+    updateEditingStartDate,
+    updateEditingCycle,
+    updateEditingCategory,
+    updateEditingIsActive,
+    updateEditingName,
+  } = useContractList(onUpdateContract, onUpdateContracts, contracts, token);
 
   if (contracts.length === 0) {
     return (
@@ -210,7 +116,7 @@ export function ContractList({
                     <Badge
                       className={`${getCycleColor(contract.cycle)} shadow-sm`}
                     >
-                      {getCycleLabel(contract.cycle)}
+                      {CYCLE_LABELS[contract.cycle]}
                     </Badge>
                     {!contract.isActive && (
                       <Badge className="bg-linear-to-r from-red-500 to-red-500 text-white shadow-sm">
@@ -234,7 +140,7 @@ export function ContractList({
                         💰 Betrag
                       </div>
                       <div className="text-lg bg-linear-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
-                        {Number(contract.price).toFixed(2)} €
+                        {formatPrice(contract.price)} €
                       </div>
                     </div>
 
@@ -254,9 +160,7 @@ export function ContractList({
                         </div>
                         <div className="flex items-center gap-1 text-slate-900">
                           <Calendar className="w-4 h-4" />
-                          {new Date(contract.startDate).toLocaleDateString(
-                            'de-DE',
-                          )}
+                          {formatStartDate(contract.startDate)}
                         </div>
                       </div>
                     )}
@@ -352,12 +256,7 @@ export function ContractList({
                 <Input
                   id="edit-name"
                   value={editingContract.name}
-                  onChange={(e) =>
-                    setEditingContract({
-                      ...editingContract,
-                      name: e.target.value,
-                    })
-                  }
+                  onChange={(e) => updateEditingName(e.target.value)}
                   required
                 />
               </div>
@@ -369,12 +268,7 @@ export function ContractList({
                   type="number"
                   step="0.01"
                   value={editingContract.price}
-                  onChange={(e) =>
-                    setEditingContract({
-                      ...editingContract,
-                      price: parseFloat(e.target.value),
-                    })
-                  }
+                  onChange={(e) => updateEditingPrice(e.target.value)}
                   required
                 />
               </div>
@@ -383,21 +277,17 @@ export function ContractList({
                 <Label htmlFor="edit-cycle">Zahlungsrhythmus</Label>
                 <Select
                   value={editingContract.cycle}
-                  onValueChange={(value) =>
-                    setEditingContract({
-                      ...editingContract,
-                      cycle: value as ContractDTO['cycle'],
-                    })
-                  }
+                  onValueChange={updateEditingCycle}
                 >
                   <SelectTrigger id="edit-cycle">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="MONTHLY">Monatlich</SelectItem>
-                    <SelectItem value="QUARTERLY">Vierteljährlich</SelectItem>
-                    <SelectItem value="HALF_YEARLY">Halbjährlich</SelectItem>
-                    <SelectItem value="YEARLY">Jährlich</SelectItem>
+                    {getCycleOptions().map(({ value, label }) => (
+                      <SelectItem key={value} value={value}>
+                        {label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -406,28 +296,17 @@ export function ContractList({
                 <Label htmlFor="edit-category">Kategorie</Label>
                 <Select
                   value={editingContract.category}
-                  onValueChange={(value) =>
-                    setEditingContract({
-                      ...editingContract,
-                      category: value as ContractDTO['category'],
-                    })
-                  }
+                  onValueChange={updateEditingCategory}
                 >
                   <SelectTrigger id="category" className="w-full">
                     <SelectValue placeholder="Kategorie auswählen" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="INSURANCE">Versicherung</SelectItem>
-                    <SelectItem value="ENERGY">Energie</SelectItem>
-                    <SelectItem value="INTERNET">Internet</SelectItem>
-                    <SelectItem value="PHONE">Telefon</SelectItem>
-                    <SelectItem value="STREAMING">Streaming</SelectItem>
-                    <SelectItem value="FOOD">Lebensmittel</SelectItem>
-                    <SelectItem value="TRANSPORT">Transport</SelectItem>
-                    <SelectItem value="HEALTH">Gesundheit</SelectItem>
-                    <SelectItem value="EDUCATION">Bildung</SelectItem>
-                    <SelectItem value="SUBSCRIPTION">Abonnement</SelectItem>
-                    <SelectItem value="OTHER">Sonstiges</SelectItem>
+                    {getCategoryOptions().map(({ value, label }) => (
+                      <SelectItem key={value} value={value}>
+                        {label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -437,19 +316,8 @@ export function ContractList({
                 <Input
                   id="edit-startDate"
                   type="date"
-                  value={
-                    editingContract.startDate
-                      ? new Date(editingContract.startDate)
-                          .toISOString()
-                          .split('T')[0]
-                      : ''
-                  }
-                  onChange={(e) =>
-                    setEditingContract({
-                      ...editingContract,
-                      startDate: new Date(e.target.value),
-                    })
-                  }
+                  value={getFormattedEditStartDate()}
+                  onChange={(e) => updateEditingStartDate(e.target.value)}
                 />
               </div>
 
@@ -461,12 +329,7 @@ export function ContractList({
                   <Button
                     type="button"
                     variant="destructive"
-                    onClick={() =>
-                      setEditingContract({
-                        ...editingContract,
-                        isActive: true,
-                      })
-                    }
+                    onClick={() => updateEditingIsActive(true)}
                     className="bg-linear-to-r from-red-600 to-orange-500 text-white hover:from-red-700 hover:to-orange-600"
                   >
                     Vertrag reaktivieren

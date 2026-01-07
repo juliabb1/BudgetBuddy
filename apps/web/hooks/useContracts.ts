@@ -70,7 +70,6 @@ export function useContracts(token: string | undefined) {
             debitDayOfMonth: contract.debitDayOfMonth,
             category: contract.category,
             isActive: contract.isActive,
-            documents: contract.documents,
           }),
         },
       );

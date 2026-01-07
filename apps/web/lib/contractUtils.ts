@@ -1,11 +1,6 @@
-import { ContractDTO } from '@repo/shared-types/contract';
+import { ContractDTO, CYCLE_LABELS } from '@repo/shared-types/contract';
 
-export const CYCLE_LABELS: Record<ContractDTO['cycle'], string> = {
-  MONTHLY: 'Monatlich',
-  QUARTERLY: 'Vierteljährlich',
-  HALF_YEARLY: 'Halbjährlich',
-  YEARLY: 'Jährlich',
-};
+export { CYCLE_LABELS };
 
 export const CYCLE_COLORS: Record<ContractDTO['cycle'], string> = {
   MONTHLY: 'bg-linear-to-r from-emerald-500 to-teal-500 text-white',

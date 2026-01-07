@@ -13,12 +13,14 @@ interface ContractsPageProps {
   contracts: ContractDTO[];
   currentUserName?: string | null;
   isLoading?: boolean;
+  token: string;
   onAddContract: (contract: CreateContractDto) => void;
   onDeleteContract: (id: string) => void;
   onUpdateContract: (
     id: string,
-    contract: Omit<ContractDTO, 'contractId'>,
+    contract: Partial<Omit<ContractDTO, 'contractId' | 'userId' | 'documents'>>,
   ) => void;
+  onUpdateContracts: (contracts: ContractDTO[]) => void;
 }
 
 /**
@@ -29,9 +31,11 @@ export function ContractsPage({
   contracts,
   currentUserName,
   isLoading,
+  token,
   onAddContract,
   onDeleteContract,
   onUpdateContract,
+  onUpdateContracts,
 }: ContractsPageProps) {
   return (
     <div className="min-h-screen bg-linear-to-br from-emerald-50 via-green-50 to-teal-50 p-4 md:p-8">
@@ -123,6 +127,8 @@ export function ContractsPage({
                 contracts={contracts}
                 onDeleteContract={onDeleteContract}
                 onUpdateContract={onUpdateContract}
+                onUpdateContracts={onUpdateContracts}
+                token={token}
               />
             </TabsContent>
 

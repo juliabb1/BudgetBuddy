@@ -7,35 +7,42 @@ export function useContractForm(
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
-  const [cycle, setCycle] = useState<ContractDTO['cycle']>('MONTHLY');
-  const [category, setCategory] =
+  const [cycleState, setCycleState] = useState<ContractDTO['cycle']>('MONTHLY');
+  const [categoryState, setCategoryState] =
     useState<ContractDTO['category']>('INSURANCE');
   const [startDate, setStartDate] = useState<Date>(new Date());
+
+  const setCycle = (value: string) => {
+    setCycleState(value as ContractDTO['cycle']);
+  };
+
+  const setCategory = (value: string) => {
+    setCategoryState(value as ContractDTO['category']);
+  };
 
   const resetForm = () => {
     setName('');
     setPrice('');
-    setCycle('MONTHLY');
-    setCategory('INSURANCE');
+    setCycleState('MONTHLY');
+    setCategoryState('INSURANCE');
     setStartDate(new Date());
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!name || !price || !category) {
+    if (!name || !price || !categoryState) {
       return;
     }
 
     onAddContract({
       name,
       price: parseFloat(price),
-      cycle,
+      cycle: cycleState,
       startDate,
-      category,
+      category: categoryState,
       debitDayOfMonth: 1,
       isActive: true,
-      documents: [],
     });
 
     resetForm();
@@ -44,6 +51,10 @@ export function useContractForm(
 
   const formattedStartDate = startDate.toISOString().split('T')[0];
 
+  const handleStartDateChange = (value: string) => {
+    setStartDate(new Date(value));
+  };
+
   return {
     open,
     setOpen,
@@ -51,13 +62,14 @@ export function useContractForm(
     setName,
     price,
     setPrice,
-    cycle,
+    cycle: cycleState,
     setCycle,
-    category,
+    category: categoryState,
     setCategory,
     startDate,
     setStartDate,
     formattedStartDate,
+    handleStartDateChange,
     handleSubmit,
   };
 }

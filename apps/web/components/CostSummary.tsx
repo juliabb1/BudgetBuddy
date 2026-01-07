@@ -15,6 +15,7 @@ export function CostSummary({ contracts }: CostSummaryProps) {
     monthlyTotal,
     getTimeFrameLabel,
     calculateContractDisplay,
+    getContractKey,
   } = useCostCalculations(contracts);
 
   return (
@@ -85,12 +86,11 @@ export function CostSummary({ contracts }: CostSummaryProps) {
 
         <div className="space-y-3">
           {contracts.map((contract, index) => {
-            const key = contract.contractId || `contract-${index}`;
             const { amount, cycleIcon } = calculateContractDisplay(contract);
 
             return (
               <div
-                key={key}
+                key={getContractKey(contract, index)}
                 className="flex items-center justify-between bg-white p-4 rounded-xl shadow-sm hover:shadow-md transition-all border border-slate-100 hover:border-emerald-200"
               >
                 <div>

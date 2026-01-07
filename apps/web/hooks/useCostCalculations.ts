@@ -1,4 +1,9 @@
-import { ContractDTO, Cycle, CycleSchema } from '@repo/shared-types/contract';
+import {
+  ContractDTO,
+  Cycle,
+  CYCLE_LABELS,
+  CycleSchema,
+} from '@repo/shared-types/contract';
 import { Calendar, TrendingUp, Wallet } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import {
@@ -51,7 +56,7 @@ export function useCostCalculations(contracts: ContractDTO[]) {
     () => [
       {
         id: 'MONTHLY' as ContractDTO['cycle'],
-        label: 'Monatlich',
+        label: CYCLE_LABELS.MONTHLY,
         amount: monthlyTotal,
         icon: Calendar,
         gradient: 'from-emerald-500 to-teal-500',
@@ -60,7 +65,7 @@ export function useCostCalculations(contracts: ContractDTO[]) {
       },
       {
         id: 'QUARTERLY' as ContractDTO['cycle'],
-        label: 'Vierteljährlich',
+        label: CYCLE_LABELS.QUARTERLY,
         amount: quarterlyTotal,
         icon: TrendingUp,
         gradient: 'from-green-500 to-emerald-500',
@@ -69,7 +74,7 @@ export function useCostCalculations(contracts: ContractDTO[]) {
       },
       {
         id: 'HALF_YEARLY' as ContractDTO['cycle'],
-        label: 'Halbjährlich',
+        label: CYCLE_LABELS.HALF_YEARLY,
         amount: halfYearlyTotal,
         icon: TrendingUp,
         gradient: 'from-green-500 to-emerald-500',
@@ -78,7 +83,7 @@ export function useCostCalculations(contracts: ContractDTO[]) {
       },
       {
         id: 'YEARLY' as ContractDTO['cycle'],
-        label: 'Jährlich',
+        label: CYCLE_LABELS.YEARLY,
         amount: yearlyTotal,
         icon: Wallet,
         gradient: 'from-teal-500 to-cyan-500',
@@ -90,13 +95,13 @@ export function useCostCalculations(contracts: ContractDTO[]) {
   );
 
   const getTimeFrameLabel = (timeFrame: ContractDTO['cycle']): string => {
-    const labels: Record<ContractDTO['cycle'], string> = {
-      MONTHLY: '📅 Pro Monat',
-      QUARTERLY: '📆 Pro Quartal',
-      HALF_YEARLY: '📆 Pro Halbjahr',
-      YEARLY: '🗓️ Pro Jahr',
+    const icons: Record<ContractDTO['cycle'], string> = {
+      MONTHLY: '📅',
+      QUARTERLY: '📆',
+      HALF_YEARLY: '📆',
+      YEARLY: '🗓️',
     };
-    return labels[timeFrame];
+    return `${icons[timeFrame]} Pro ${CYCLE_LABELS[timeFrame].replace('lich', '')}`;
   };
 
   const calculateContractDisplay = (contract: ContractDTO) => {
@@ -111,6 +116,10 @@ export function useCostCalculations(contracts: ContractDTO[]) {
     };
   };
 
+  const getContractKey = (contract: ContractDTO, index: number): string => {
+    return contract.contractId || `contract-${index}`;
+  };
+
   return {
     selectedTimeFrame,
     setSelectedTimeFrame,
@@ -118,5 +127,6 @@ export function useCostCalculations(contracts: ContractDTO[]) {
     monthlyTotal,
     getTimeFrameLabel,
     calculateContractDisplay,
+    getContractKey,
   };
 }
