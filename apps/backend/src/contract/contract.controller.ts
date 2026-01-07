@@ -14,6 +14,7 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiBearerAuth,
   ApiConsumes,
@@ -21,11 +22,19 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { FileInterceptor } from '@nestjs/platform-express';
 import { CreateContractDto } from '@repo/shared-types/contract';
 import type { Request, Response } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ContractService } from './contract.service';
+
+interface MulterFile {
+  fieldname: string;
+  originalname: string;
+  encoding: string;
+  mimetype: string;
+  size: number;
+  buffer: Buffer;
+}
 
 @ApiTags('Contracts')
 @ApiBearerAuth('JWT-auth')
@@ -83,8 +92,9 @@ export class ContractController {
         isActive: contract.isActive,
         user: { connect: { userId: user.userId } },
       });
-    } catch (error: any) {
-      if (error.code === 'P2003') {
+    } catch (error) {
+      const prismaError = error as { code?: string };
+      if (prismaError.code === 'P2003') {
         throw new HttpException('User not found', HttpStatus.NOT_FOUND);
       }
       throw new HttpException('Invalid input data', HttpStatus.BAD_REQUEST);
@@ -119,8 +129,9 @@ export class ContractController {
           isActive: contract.isActive,
         }),
       });
-    } catch (error: any) {
-      if (error.code === 'P2025') {
+    } catch (error) {
+      const prismaError = error as { code?: string };
+      if (prismaError.code === 'P2025') {
         throw new HttpException('Contract not found', HttpStatus.NOT_FOUND);
       }
       throw new HttpException('Invalid input data', HttpStatus.BAD_REQUEST);
@@ -136,8 +147,9 @@ export class ContractController {
   async deleteContract(@Param('id') contractId: string) {
     try {
       return await this.contractService.deleteContract(contractId);
-    } catch (error: any) {
-      if (error.code === 'P2025') {
+    } catch (error) {
+      const prismaError = error as { code?: string };
+      if (prismaError.code === 'P2025') {
         throw new HttpException('Contract not found', HttpStatus.NOT_FOUND);
       }
       throw new HttpException(
@@ -157,7 +169,7 @@ export class ContractController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async uploadDocument(
     @Param('id') contractId: string,
-    @UploadedFile() file: any, // Express.Multer.File
+    @UploadedFile() file: MulterFile,
   ) {
     if (!file) {
       throw new HttpException('No file provided', HttpStatus.BAD_REQUEST);
@@ -186,10 +198,12 @@ export class ContractController {
     }
 
     try {
-      return await this.contractService.addDocument(contractId, file);
-    } catch (error: any) {
+      const result = await this.contractService.addDocument(contractId, file);
+      return result;
+    } catch (error) {
+      const err = error as { message?: string };
       throw new HttpException(
-        error.message || 'Error uploading document',
+        err.message || 'Error uploading document',
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -204,9 +218,10 @@ export class ContractController {
   async deleteDocument(@Param('documentId') documentId: string) {
     try {
       return await this.contractService.deleteDocument(documentId);
-    } catch (error: any) {
+    } catch (error) {
+      const err = error as { message?: string };
       throw new HttpException(
-        error.message || 'Error deleting document',
+        err.message || 'Error deleting document',
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -223,20 +238,20 @@ export class ContractController {
     @Res() res: Response,
   ) {
     try {
-      const { filePath, document } =
+      const { data, mimeType, originalName } =
         await this.contractService.getDocumentFile(documentId);
 
-      res.setHeader('Content-Type', document.mimeType);
+      res.setHeader('Content-Type', mimeType || 'application/octet-stream');
       res.setHeader(
         'Content-Disposition',
-        `attachment; filename="${document.originalName}"`,
+        `attachment; filename="${originalName}"`,
       );
 
-      const fileStream = require('fs').createReadStream(filePath);
-      fileStream.pipe(res);
-    } catch (error: any) {
+      res.send(data);
+    } catch (error) {
+      const err = error as { message?: string };
       throw new HttpException(
-        error.message || 'Error downloading document',
+        err.message || 'Error downloading document',
         HttpStatus.BAD_REQUEST,
       );
     }

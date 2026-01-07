@@ -53,6 +53,7 @@ model Document {
   filePath     String
   fileSize     Int
   mimeType     String
+  data         Bytes  
   uploadedAt   DateTime @default(now())
 
   contract     Contract @relation(fields: [contractId], references: [contractId], onDelete: Cascade)
