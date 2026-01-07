@@ -1,7 +1,7 @@
 import { ContractDTO } from '@repo/shared-types/contract';
 import { useCurrentUser } from '@web/lib/auth';
 import { Check, Copy, FileDown } from 'lucide-react';
-import { useState } from 'react';
+import { useCancellationLetter } from '../hooks/useCancellationLetter';
 import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { Input } from './ui/input';
@@ -22,103 +22,21 @@ export function CancellationDialog({
   onConfirmCancellation,
 }: CancellationDialogProps) {
   const userName = useCurrentUser()?.name;
-  const senderEmail = useCurrentUser()?.email;
-  const [contractNumber, setContractNumber] = useState('');
-  const [senderName, setSenderName] = useState(userName || '');
-  const [copied, setCopied] = useState(false);
-  const [terminationDate, setTerminationDate] = useState('');
+  const senderEmail = useCurrentUser()?.email ?? '';
 
-  const today = new Date().toLocaleDateString('de-DE', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
-
-  const isToday = (dateString: string) => {
-    if (!dateString) return false;
-    const inputDate = new Date(dateString);
-    const today = new Date();
-    return (
-      inputDate.getFullYear() === today.getFullYear() &&
-      inputDate.getMonth() === today.getMonth() &&
-      inputDate.getDate() === today.getDate()
-    );
-  };
-
-  const generateCancellationLetter = () => {
-    // Datum heute als lesbarer Text
-    const todayText = new Date().toLocaleDateString('de-DE', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-
-    let terminationText = 'fristgerecht zum nächstmöglichen Zeitpunkt';
-    if (terminationDate) {
-      if (!isToday(terminationDate)) {
-        terminationText = `zum ${new Date(terminationDate).toLocaleDateString(
-          'de-DE',
-          {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-          },
-        )}`;
-      }
-      // Wenn terminationDate == heute, bleibt terminationText wie bisher
-    }
-
-    return `
-${todayText}
-
-Sehr geehrte Damen und Herren,
-
-hiermit kündige ich meinen Vertrag '${contract.name}'${
-      contractNumber ? ` (Vertragsnummer: ${contractNumber})` : ''
-    } ${terminationText}.
-
-Bitte senden Sie mir eine schriftliche Kündigungsbestätigung mit Angabe des Beendigungszeitpunktes zu.
-
-Für eventuell erfolgende Rückfragen bin ich unter der E-Mail '${senderEmail}' erreichbar.
-
-
-Mit freundlichen Grüßen
-${senderName}
-`;
-  };
-
-  const cancellationLetter = generateCancellationLetter();
-
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(cancellationLetter);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error('Fehler beim Kopieren:', err);
-    }
-  };
-
-  const handleDownload = () => {
-    const blob = new Blob([cancellationLetter], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `Kuendigung_${contract.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.txt`;
-    link.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const handleConfirm = () => {
-    if (
-      window.confirm(
-        `Möchten Sie den Vertrag "${contract.name}" wirklich kündigen?`,
-      )
-    ) {
-      onConfirmCancellation(contract);
-      onOpenChange(false);
-    }
-  };
+  const {
+    contractNumber,
+    setContractNumber,
+    senderName,
+    setSenderName,
+    copied,
+    terminationDate,
+    setTerminationDate,
+    cancellationLetter,
+    handleCopy,
+    handleDownload,
+    handleConfirm,
+  } = useCancellationLetter(contract, userName ?? undefined, senderEmail);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -235,7 +153,11 @@ ${senderName}
             <Button
               type="button"
               variant="destructive"
-              onClick={handleConfirm}
+              onClick={() => {
+                if (handleConfirm(onConfirmCancellation)) {
+                  onOpenChange(false);
+                }
+              }}
               disabled={!senderName}
               className="bg-linear-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700"
             >

@@ -1,6 +1,5 @@
-import { CATEGORY_LABELS, ContractDTO } from '@repo/shared-types/contract';
+import { ContractDTO } from '@repo/shared-types/contract';
 import { BarChart3, PieChart as PieChartIcon } from 'lucide-react';
-import { useState } from 'react';
 import {
   Bar,
   BarChart,
@@ -14,6 +13,8 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { useContractChart } from '../hooks/useContractChart';
+import { CHART_COLORS, formatCurrency } from '../lib/contractUtils';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 
@@ -22,65 +23,17 @@ interface ContractChartProps {
 }
 
 export function ContractChart({ contracts }: ContractChartProps) {
-  const [chartType, setChartType] = useState<'bar' | 'pie'>('bar');
-  const [filter, setFilter] = useState<'all' | 'active' | 'inactive'>('all');
-
-  // Filter contracts based on isActive
-  const filteredContracts = contracts.filter((contract) => {
-    if (filter === 'active') return contract.isActive;
-    if (filter === 'inactive') return !contract.isActive;
-    return true;
-  });
-
-  // Group contracts by category and calculate monthly amounts
-  const categoryData = filteredContracts.reduce(
-    (acc, contract) => {
-      let monthlyAmount = 0;
-
-      switch (contract.cycle) {
-        case 'MONTHLY':
-          monthlyAmount = Number(contract.price);
-          break;
-        case 'QUARTERLY':
-          monthlyAmount = Number(contract.price) / 3;
-          break;
-        case 'HALF_YEARLY':
-          monthlyAmount = Number(contract.price) / 6;
-          break;
-        case 'YEARLY':
-          monthlyAmount = Number(contract.price) / 12;
-          break;
-      }
-
-      const label = CATEGORY_LABELS[contract.category] || contract.category;
-
-      const existingCategory = acc.find((item) => item.category === label);
-      if (existingCategory) {
-        existingCategory.monthlyAmount += monthlyAmount;
-        existingCategory.annualAmount += monthlyAmount * 12;
-      } else {
-        acc.push({
-          category: label,
-          monthlyAmount,
-          annualAmount: monthlyAmount * 12,
-        });
-      }
-
-      return acc;
-    },
-    [] as { category: string; monthlyAmount: number; annualAmount: number }[],
-  );
-
-  const COLORS = [
-    '#10b981', // emerald
-    '#14b8a6', // teal
-    '#22c55e', // green
-    '#06b6d4', // cyan
-    '#84cc16', // lime
-    '#059669', // emerald-600
-    '#0d9488', // teal-600
-    '#16a34a', // green-600
-  ];
+  const {
+    chartType,
+    setChartType,
+    filter,
+    setFilter,
+    filteredContracts,
+    categoryData,
+    formatTooltipValue,
+    formatPieLabel,
+    formatPieTooltip,
+  } = useContractChart(contracts);
 
   if (filteredContracts.length === 0) {
     return (
@@ -186,7 +139,7 @@ export function ContractChart({ contracts }: ContractChartProps) {
                 <XAxis dataKey="category" />
                 <YAxis />
                 <Tooltip
-                  formatter={(value: number) => `${value.toFixed(2)} €`}
+                  formatter={(value: number) => formatTooltipValue(value)}
                   contentStyle={{ borderRadius: '8px' }}
                 />
                 <Legend />
@@ -223,7 +176,7 @@ export function ContractChart({ contracts }: ContractChartProps) {
                   cy="50%"
                   labelLine={false}
                   label={({ payload, percent = 0 }) =>
-                    `${payload.category}: ${(percent * 100).toFixed(0)}%`
+                    formatPieLabel(payload, percent)
                   }
                   outerRadius={120}
                   fill="#8884d8"
@@ -232,12 +185,12 @@ export function ContractChart({ contracts }: ContractChartProps) {
                   {categoryData.map((entry, index) => (
                     <Cell
                       key={`cell-${index}`}
-                      fill={COLORS[index % COLORS.length]}
+                      fill={CHART_COLORS[index % CHART_COLORS.length]}
                     />
                   ))}
                 </Pie>
                 <Tooltip
-                  formatter={(value: number) => `${value.toFixed(2)} € / Monat`}
+                  formatter={(value: number) => formatPieTooltip(value)}
                   contentStyle={{ borderRadius: '8px' }}
                 />
               </PieChart>
@@ -255,14 +208,16 @@ export function ContractChart({ contracts }: ContractChartProps) {
             <div className="flex items-center gap-3 mb-3">
               <div
                 className="w-3 h-3 rounded-full shadow-md"
-                style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                style={{
+                  backgroundColor: CHART_COLORS[index % CHART_COLORS.length],
+                }}
               />
               <div className="text-sm text-slate-600">
                 🏷️ {category.category}
               </div>
             </div>
             <div className="text-xl bg-linear-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
-              {category.monthlyAmount.toFixed(2)} €
+              {formatCurrency(category.monthlyAmount)}
             </div>
             <div className="text-xs text-slate-500">💵 pro Monat</div>
           </Card>

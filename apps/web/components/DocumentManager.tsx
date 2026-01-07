@@ -1,17 +1,18 @@
-import { useState } from 'react';
 import { Document } from '@repo/shared-types/contract';
-import { Card } from './ui/card';
+import { Download, Eye, FileText, Trash2, Upload } from 'lucide-react';
+import Image from 'next/image';
+import { useDocumentManager } from '../hooks/useDocumentManager';
 import { Button } from './ui/button';
+import { Card } from './ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { FileText, Upload, Download, Eye, Trash2 } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
-import Image from 'next/image';
 
 interface DocumentManagerProps {
   documents: Document[];
   onAddDocument: (document: Document) => void;
   onDeleteDocument: (id: string) => void;
+  contractId: string;
   token: string;
 }
 
@@ -21,98 +22,32 @@ export function DocumentManager({
   onDeleteDocument,
   contractId,
   token,
-}: DocumentManagerProps & { contractId: string }) {
-  const [isUploading, setIsUploading] = useState(false);
-  const [previewDoc, setPreviewDoc] = useState<Document | null>(null);
-  const [isDragOver, setIsDragOver] = useState(false);
-
-  const uploadFile = async (file: File) => {
-    // Limit file size to 5MB
-    if (file.size > 5 * 1024 * 1024) {
-      alert('Datei ist zu groß. Maximale Größe: 5MB');
-      return;
-    }
-
-    setIsUploading(true);
-
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/contracts/${contractId}/documents`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          body: formData,
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error('Upload failed');
-      }
-
-      const newDocument = await response.json();
-      onAddDocument(newDocument);
-    } catch (error) {
-      console.error('Upload error:', error);
-      alert('Fehler beim Hochladen der Datei');
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    await uploadFile(file);
-    e.target.value = '';
-  };
-
-  const handleDownload = (doc: Document) => {
-    const link = document.createElement('a');
-    link.href = doc.data; // This is now the download URL
-    link.target = '_blank'; // Open in new tab for download
-    link.click();
-  };
-
-  const handlePreview = (doc: Document) => {
-    setPreviewDoc(doc);
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragOver(true);
-  };
-
-  const handleDragEnter = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragOver(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragOver(false);
-  };
-
-  const handleDrop = async (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragOver(false);
-
-    const files = Array.from(e.dataTransfer.files);
-    if (files.length === 0) return;
-
-    const file = files[0]; // Only handle first file for now
-    if (!file) return;
-
-    await uploadFile(file);
-  };
+}: DocumentManagerProps) {
+  const {
+    isUploading,
+    previewDoc,
+    hasDocuments,
+    handleFileUpload,
+    handleDownload,
+    handlePreview,
+    closePreview,
+    handleDragOver,
+    handleDragEnter,
+    handleDragLeave,
+    handleDrop,
+    getUploadButtonText,
+    getEmptyCardClass,
+    getEmptyIconClass,
+    getEmptyIcon,
+    getEmptyMainText,
+    getEmptySubText,
+    getDocumentListClass,
+    isImageDocument,
+    isPdfDocument,
+    canPreview,
+    formatUploadDate,
+    getPreviewType,
+  } = useDocumentManager(contractId, token, onAddDocument, documents);
 
   return (
     <div className="space-y-4">
@@ -130,7 +65,7 @@ export function DocumentManager({
           >
             <span>
               <Upload className="w-4 h-4 mr-2" />
-              {isUploading ? 'Lädt...' : 'Hochladen'}
+              {getUploadButtonText()}
             </span>
           </Button>
         </Label>
@@ -150,43 +85,17 @@ export function DocumentManager({
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
-        {documents.length === 0 ? (
-          <Card
-            className={`p-8 text-center border-2 border-dashed transition-all duration-200 gap-2 ${
-              isDragOver
-                ? 'border-purple-500 bg-purple-100 shadow-lg scale-[102%]'
-                : 'border-purple-300 bg-linear-to-br from-purple-50 to-pink-50'
-            }`}
-          >
-            <div
-              className={`text-6xl mb-3 transition-transform duration-200 ${
-                isDragOver ? 'scale-105' : 'scale-100'
-              }`}
-            >
-              {isDragOver ? '📥' : '📄'}
-            </div>
-            <p className="text-slate-600 text-sm mb-1">
-              {isDragOver
-                ? 'Datei hier ablegen'
-                : 'Noch keine Dokumente hochgeladen'}
-            </p>
-            <p className="text-slate-500 text-xs">
-              {isDragOver
-                ? 'PDF, DOC, DOCX, JPG, PNG (max. 5MB)'
-                : 'Ziehe Dateien hierher oder klicke auf "Hochladen"'}
-            </p>
+        {!hasDocuments ? (
+          <Card className={getEmptyCardClass()}>
+            <div className={getEmptyIconClass()}>{getEmptyIcon()}</div>
+            <p className="text-slate-600 text-sm mb-1">{getEmptyMainText()}</p>
+            <p className="text-slate-500 text-xs">{getEmptySubText()}</p>
             <p className="text-slate-500 text-xs mt-1">
               PDF, DOC, DOCX, JPG, PNG (max. 5MB)
             </p>
           </Card>
         ) : (
-          <div
-            className={`space-y-2 transition-all duration-200 ${
-              isDragOver
-                ? 'ring-2 ring-purple-400 ring-opacity-50 rounded-lg p-2 scale-[102%]'
-                : ''
-            }`}
-          >
+          <div className={getDocumentListClass()}>
             {documents.map((doc) => (
               <Card
                 key={doc.id}
@@ -202,14 +111,13 @@ export function DocumentManager({
                         {doc.name}
                       </div>
                       <div className="text-xs text-slate-500">
-                        📅{' '}
-                        {new Date(doc.uploadDate).toLocaleDateString('de-DE')}
+                        📅 {formatUploadDate(doc.uploadDate)}
                       </div>
                     </div>
                   </div>
 
                   <div className="flex gap-2 ml-2">
-                    {doc.type.startsWith('image/') && (
+                    {canPreview(doc) && (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -243,18 +151,29 @@ export function DocumentManager({
         )}
       </div>
 
-      <Dialog open={!!previewDoc} onOpenChange={() => setPreviewDoc(null)}>
+      <Dialog open={!!previewDoc} onOpenChange={closePreview}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>{previewDoc?.name}</DialogTitle>
           </DialogHeader>
           {previewDoc && (
             <div className="mt-4">
-              <Image
-                src={previewDoc.data}
-                alt={previewDoc.name}
-                className="w-full h-auto rounded-lg"
-              />
+              {getPreviewType(previewDoc) === 'image' && (
+                <Image
+                  src={previewDoc.data}
+                  alt={previewDoc.name}
+                  width={800}
+                  height={600}
+                  className="w-full h-auto rounded-lg"
+                />
+              )}
+              {getPreviewType(previewDoc) === 'pdf' && (
+                <iframe
+                  src={previewDoc.data}
+                  className="w-full h-[600px] rounded-lg border"
+                  title={previewDoc.name}
+                />
+              )}
             </div>
           )}
         </DialogContent>

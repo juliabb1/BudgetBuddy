@@ -1,6 +1,10 @@
-import { ContractDTO, CreateContractDto } from '@repo/shared-types/contract';
+import {
+  CreateContractDto,
+  getCategoryOptions,
+  getCycleOptions,
+} from '@repo/shared-types/contract';
 import { Plus } from 'lucide-react';
-import { useState } from 'react';
+import { useContractForm } from '../hooks/useContractForm';
 import { Button } from './ui/button';
 import {
   Dialog,
@@ -26,39 +30,23 @@ interface ContractFormProps {
 }
 
 export function ContractForm({ onAddContract }: ContractFormProps) {
-  const [open, setOpen] = useState(false);
-  const [name, setName] = useState('');
-  const [price, setPrice] = useState('');
-  const [cycle, setCycle] = useState<ContractDTO['cycle']>('MONTHLY');
-  const [category, setCategory] =
-    useState<ContractDTO['category']>('INSURANCE');
-  const [startDate, setStartDate] = useState<Date>(new Date());
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!name || !price || !category) {
-      return;
-    }
-
-    onAddContract({
-      name,
-      price: parseFloat(price),
-      cycle,
-      startDate,
-      category,
-      debitDayOfMonth: 1,
-      isActive: true,
-    });
-
-    // Reset form
-    setName('');
-    setPrice('');
-    setCycle('MONTHLY');
-    setCategory('INSURANCE');
-    setStartDate(new Date());
-    setOpen(false);
-  };
+  const {
+    open,
+    setOpen,
+    name,
+    setName,
+    price,
+    setPrice,
+    cycle,
+    setCycle,
+    category,
+    setCategory,
+    startDate,
+    setStartDate,
+    formattedStartDate,
+    handleStartDateChange,
+    handleSubmit,
+  } = useContractForm(onAddContract);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -104,45 +92,32 @@ export function ContractForm({ onAddContract }: ContractFormProps) {
 
           <div className="space-y-2">
             <Label htmlFor="frequency">Zahlungsrhythmus</Label>
-            <Select
-              value={cycle}
-              onValueChange={(value) => setCycle(value as ContractDTO['cycle'])}
-            >
+            <Select value={cycle} onValueChange={setCycle}>
               <SelectTrigger id="frequency" className="w-36">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="MONTHLY">Monatlich</SelectItem>
-                <SelectItem value="QUARTERLY">Vierteljährlich</SelectItem>
-                <SelectItem value="HALF_YEARLY">Halbjährlich</SelectItem>
-                <SelectItem value="YEARLY">Jährlich</SelectItem>
+                {getCycleOptions().map(({ value, label }) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="category">Kategorie</Label>
-            <Select
-              value={category}
-              onValueChange={(value) =>
-                setCategory(value as ContractDTO['category'])
-              }
-            >
+            <Select value={category} onValueChange={setCategory}>
               <SelectTrigger id="category" className="w-full">
                 <SelectValue placeholder="Kategorie auswählen" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="INSURANCE">Versicherung</SelectItem>
-                <SelectItem value="ENERGY">Energie</SelectItem>
-                <SelectItem value="INTERNET">Internet</SelectItem>
-                <SelectItem value="PHONE">Telefon</SelectItem>
-                <SelectItem value="STREAMING">Streaming</SelectItem>
-                <SelectItem value="FOOD">Lebensmittel</SelectItem>
-                <SelectItem value="TRANSPORT">Transport</SelectItem>
-                <SelectItem value="HEALTH">Gesundheit</SelectItem>
-                <SelectItem value="EDUCATION">Bildung</SelectItem>
-                <SelectItem value="SUBSCRIPTION">Abonnement</SelectItem>
-                <SelectItem value="OTHER">Sonstiges</SelectItem>
+                {getCategoryOptions().map(({ value, label }) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -152,8 +127,8 @@ export function ContractForm({ onAddContract }: ContractFormProps) {
             <Input
               id="dueDate"
               type="date"
-              value={startDate.toISOString().split('T')[0]}
-              onChange={(e) => setStartDate(new Date(e.target.value))}
+              value={formattedStartDate}
+              onChange={(e) => handleStartDateChange(e.target.value)}
             />
           </div>
 

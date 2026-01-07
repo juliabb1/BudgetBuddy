@@ -1,10 +1,5 @@
 'use client';
-import {
-  CategorySchema,
-  ContractDTO,
-  CreateContractDto,
-  CycleSchema,
-} from '@repo/shared-types/contract';
+import { ContractDTO, CreateContractDto } from '@repo/shared-types/contract';
 import { ContractChart } from '@web/components/ContractChart';
 import { ContractForm } from '@web/components/ContractForm';
 import { ContractList } from '@web/components/ContractList';
@@ -52,8 +47,9 @@ export default function Home() {
         }
         const data = await res.json();
         setContracts(data);
-      } catch (err: any) {
-        console.log(err.message ?? 'Unbekannter Fehler');
+      } catch (err) {
+        const error = err as { message?: string };
+        console.log(error.message ?? 'Unbekannter Fehler');
       }
     };
 
@@ -111,8 +107,9 @@ export default function Home() {
         setContracts(updatedContracts);
       }
       // Contract creation successful, contracts refreshed
-    } catch (err: any) {
-      console.log(err.message ?? 'Unbekannter Fehler');
+    } catch (err) {
+      const error = err as { message?: string };
+      console.log(error.message ?? 'Unbekannter Fehler');
     }
   };
 
@@ -136,22 +133,22 @@ export default function Home() {
         throw new Error(errorData.message || 'Failed to delete contract');
       }
       setContracts(contracts.filter((contract) => contract.contractId !== id));
-    } catch (err: any) {
+    } catch (err) {
+      const error = err as { message?: string };
       setContracts(originalContracts);
-      throw new Error(err.message || 'Failed to delete contract');
+      throw new Error(error.message || 'Failed to delete contract');
     }
   };
 
   const updateContract = async (
     id: string,
-    updatedContract: Partial<Omit<ContractDTO, 'contractId'>>,
+    updatedContract: Partial<
+      Omit<ContractDTO, 'contractId' | 'userId' | 'documents'>
+    >,
   ) => {
     // Store original contracts for potential rollback
     const originalContracts = contracts;
     try {
-      // Remove documents from update payload since they're handled separately
-      const { documents, ...contractUpdate } = updatedContract;
-
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/contracts/${id}`,
         {
@@ -160,7 +157,7 @@ export default function Home() {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify(contractUpdate),
+          body: JSON.stringify(updatedContract),
         },
       );
 
@@ -177,10 +174,11 @@ export default function Home() {
           contract.contractId === id ? { ...contract, ...data } : contract,
         ),
       );
-    } catch (err: any) {
+    } catch (err) {
+      const error = err as { message?: string };
       // Revert UI on error
       setContracts(originalContracts);
-      throw new Error(err.message || 'Failed to update contract');
+      throw new Error(error.message || 'Failed to update contract');
     }
   };
 

@@ -31,11 +31,11 @@ export const DocumentSchema = z.object({
   filePath: z.string(),
   fileSize: z.number(),
   mimeType: z.string(),
+  data: z.string(), // Base64 or download URL
   uploadedAt: z.date(),
   // For frontend compatibility
   id: z.string(),
   name: z.string(),
-  data: z.string(), // Will be download URL
   type: z.string(),
   uploadDate: z.string(),
 });
@@ -94,3 +94,25 @@ export const CATEGORY_LABELS: Record<Category, string> = {
   SUBSCRIPTION: 'Abonnement',
   OTHER: 'Sonstiges',
 };
+
+export const CYCLE_LABELS: Record<Cycle, string> = {
+  MONTHLY: 'Monatlich',
+  QUARTERLY: 'Vierteljährlich',
+  HALF_YEARLY: 'Halbjährlich',
+  YEARLY: 'Jährlich',
+};
+
+// Helper functions to get category/cycle options for UI generation
+export function getCategoryOptions() {
+  return Object.entries(CATEGORY_LABELS).map(([value, label]) => ({
+    value: value as Category,
+    label,
+  }));
+}
+
+export function getCycleOptions() {
+  return Object.entries(CYCLE_LABELS).map(([value, label]) => ({
+    value: value as Cycle,
+    label,
+  }));
+}

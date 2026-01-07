@@ -1,8 +1,17 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Contract, Document, Prisma } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
+import { Contract, Prisma } from '@prisma/client';
 import * as fs from 'fs';
 import * as path from 'path';
+import { PrismaService } from '../prisma/prisma.service';
+
+interface MulterFile {
+  fieldname: string;
+  originalname: string;
+  encoding: string;
+  mimetype: string;
+  size: number;
+  buffer: Buffer;
+}
 
 @Injectable()
 export class ContractService {
@@ -33,10 +42,12 @@ export class ContractService {
         filePath: doc.filePath,
         fileSize: doc.fileSize,
         mimeType: doc.mimeType,
+        data: doc.data
+          ? `data:${doc.mimeType};base64,${Buffer.from(doc.data).toString('base64')}`
+          : `${process.env.BACKEND_URL || 'http://localhost:3001'}/contracts/documents/${doc.documentId}/download`,
         uploadedAt: doc.uploadedAt,
         id: doc.documentId,
         name: doc.originalName,
-        data: `${process.env.BACKEND_URL || 'http://localhost:3001'}/contracts/documents/${doc.documentId}/download`,
         type: doc.mimeType,
         uploadDate: doc.uploadedAt.toISOString(),
       })),
@@ -94,10 +105,7 @@ export class ContractService {
     });
   }
 
-  async addDocument(
-    contractId: string,
-    file: any, // Express.Multer.File
-  ): Promise<any> {
+  async addDocument(contractId: string, file: MulterFile) {
     // Ensure uploads directory exists
     if (!fs.existsSync(this.uploadsDir)) {
       fs.mkdirSync(this.uploadsDir, { recursive: true });
@@ -107,10 +115,10 @@ export class ContractService {
     const fileName = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}${path.extname(file.originalname)}`;
     const filePath = path.join(this.uploadsDir, fileName);
 
-    // Save file to disk
+    // Save file to disk (backup)
     fs.writeFileSync(filePath, file.buffer);
 
-    // Save document metadata to database
+    // Save document with binary data to database
     const document = await this.prisma.document.create({
       data: {
         contractId,
@@ -119,10 +127,11 @@ export class ContractService {
         filePath,
         fileSize: file.size,
         mimeType: file.mimetype,
+        data: Buffer.from(file.buffer), // Store binary data
       },
     });
 
-    // Return in frontend-compatible format
+    // Return in frontend-compatible format with base64 data
     return {
       documentId: document.documentId,
       contractId: document.contractId,
@@ -131,16 +140,16 @@ export class ContractService {
       filePath: document.filePath,
       fileSize: document.fileSize,
       mimeType: document.mimeType,
+      data: `data:${document.mimeType};base64,${Buffer.from(document.data).toString('base64')}`,
       uploadedAt: document.uploadedAt,
       id: document.documentId,
       name: document.originalName,
-      data: `${process.env.BACKEND_URL || 'http://localhost:3001'}/contracts/documents/${document.documentId}/download`,
       type: document.mimeType,
       uploadDate: document.uploadedAt.toISOString(),
     };
   }
 
-  async deleteDocument(documentId: string): Promise<Document> {
+  async deleteDocument(documentId: string) {
     const document = await this.prisma.document.findUnique({
       where: { documentId },
     });
@@ -149,7 +158,7 @@ export class ContractService {
       throw new Error('Document not found');
     }
 
-    // Delete file from disk
+    // Delete file from disk (backup file)
     try {
       if (fs.existsSync(document.filePath)) {
         fs.unlinkSync(document.filePath);
@@ -164,9 +173,7 @@ export class ContractService {
     });
   }
 
-  async getDocumentFile(
-    documentId: string,
-  ): Promise<{ filePath: string; document: Document }> {
+  async getDocumentFile(documentId: string) {
     const document = await this.prisma.document.findUnique({
       where: { documentId },
     });
@@ -175,10 +182,23 @@ export class ContractService {
       throw new Error('Document not found');
     }
 
-    if (!fs.existsSync(document.filePath)) {
-      throw new Error('File not found on disk');
+    // Return data from database or read from file
+    if (document.data) {
+      return {
+        data: Buffer.from(document.data),
+        mimeType: document.mimeType,
+        originalName: document.originalName,
+      };
+    } else {
+      // Fallback to file system if data not in DB
+      if (!fs.existsSync(document.filePath)) {
+        throw new Error('File not found');
+      }
+      return {
+        data: fs.readFileSync(document.filePath),
+        mimeType: document.mimeType,
+        originalName: document.originalName,
+      };
     }
-
-    return { filePath: document.filePath, document };
   }
 }
