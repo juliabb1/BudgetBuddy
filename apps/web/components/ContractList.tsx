@@ -1,13 +1,10 @@
-import { CATEGORY_LABELS, ContractDTO } from '@repo/shared-types/contract';
-import { Calendar, Clipboard, Edit, FileText, Trash2 } from 'lucide-react';
-import { useContractList } from '../hooks/useContractList';
 import {
-  CARD_COLORS,
-  CYCLE_COLORS,
-  CYCLE_LABELS,
-  formatCurrency,
-  formatDate,
-} from '../lib/contractUtils';
+  CATEGORY_LABELS,
+  ContractDTO,
+  Document,
+} from '@repo/shared-types/contract';
+import { Calendar, Clipboard, Edit, FileText, Trash2 } from 'lucide-react';
+import { useState } from 'react';
 import { CancellationDialog } from './CancellationDialog';
 import { DocumentManager } from './DocumentManager';
 import {
@@ -35,34 +32,142 @@ interface ContractListProps {
   onDeleteContract: (id: string) => void;
   onUpdateContract: (
     contractId: string,
-    contract: Omit<ContractDTO, 'contractId'>,
+    contract: Partial<Omit<ContractDTO, 'contractId'>>,
   ) => void;
+  onUpdateContracts: (contracts: ContractDTO[]) => void;
+  token: string;
 }
 
 export function ContractList({
   contracts,
   onDeleteContract,
   onUpdateContract,
+  onUpdateContracts,
+  token,
 }: ContractListProps) {
-  const {
-    editingContract,
-    isDialogOpen,
-    setIsDialogOpen,
-    cancellingContract,
-    isCancellationDialogOpen,
-    setIsCancellationDialogOpen,
-    handleEdit,
-    handleUpdate,
-    handleCancelContract,
-    handleConfirmCancellation,
-    handleAddDocument,
-    handleDeleteDocument,
-    handleDeleteConfirmation,
-    updateEditingContract,
-    getFormattedEditStartDate,
-    getContractKey,
-    getDocumentCount,
-  } = useContractList(onUpdateContract);
+  const [editingContract, setEditingContract] = useState<ContractDTO | null>(
+    null,
+  );
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [cancellingContract, setCancellingContract] =
+    useState<ContractDTO | null>(null);
+  const [isCancellationDialogOpen, setIsCancellationDialogOpen] =
+    useState(false);
+
+  const handleEdit = (contract: ContractDTO) => {
+    setEditingContract(contract);
+    setIsDialogOpen(true);
+  };
+
+  const handleUpdate = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editingContract) {
+      onUpdateContract(editingContract.contractId, {
+        userId: editingContract.userId,
+        name: editingContract.name,
+        price: Number(editingContract.price),
+        cycle: editingContract.cycle,
+        startDate: editingContract.startDate,
+        isActive: editingContract.isActive,
+        debitDayOfMonth: 1,
+        category: editingContract.category,
+        documents: editingContract.documents,
+      });
+      setIsDialogOpen(false);
+      setEditingContract(null);
+    }
+  };
+
+  const handleCancelContract = (contract: ContractDTO) => {
+    setCancellingContract(contract);
+    setIsCancellationDialogOpen(true);
+  };
+
+  const handleConfirmCancellation = (contract: ContractDTO) => {
+    console.log('Kündigung bestätigt für Vertrag:', contract);
+    onUpdateContract(contract.contractId, {
+      name: contract.name,
+      price: Number(contract.price),
+      cycle: contract.cycle,
+      category: contract.category,
+      startDate: contract.startDate,
+      debitDayOfMonth: contract.debitDayOfMonth ?? 1,
+      documents: contract.documents,
+      userId: contract.userId,
+      isActive: false, // jetzt deaktiviert
+    });
+    setIsCancellationDialogOpen(false);
+  };
+
+  const handleAddDocument = async (contractId: string, document: Document) => {
+    // Update local state immediately for better UX
+    const updatedContracts = contracts.map((c) =>
+      c.contractId === contractId
+        ? { ...c, documents: [...(c.documents ?? []), document] }
+        : c,
+    );
+    onUpdateContracts(updatedContracts);
+  };
+
+  const handleDeleteDocument = async (
+    contractId: string,
+    documentId: string,
+  ) => {
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/contracts/documents/${documentId}`,
+        {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      if (response.ok) {
+        // Update local state
+        const updatedContracts = contracts.map((c) =>
+          c.contractId === contractId
+            ? {
+                ...c,
+                documents: (c.documents ?? []).filter(
+                  (d) => d.id !== documentId,
+                ),
+              }
+            : c,
+        );
+        onUpdateContracts(updatedContracts);
+      }
+    } catch (error) {
+      console.error('Delete error:', error);
+    }
+  };
+
+  const getCycleLabel = (cycle: ContractDTO['cycle']) => {
+    switch (cycle) {
+      case 'MONTHLY':
+        return 'Monatlich';
+      case 'QUARTERLY':
+        return 'Vierteljährlich';
+      case 'HALF_YEARLY':
+        return 'Halbjährlich';
+      case 'YEARLY':
+        return 'Jährlich';
+    }
+  };
+
+  const getCycleColor = (cycle: ContractDTO['cycle']) => {
+    switch (cycle) {
+      case 'MONTHLY':
+        return 'bg-linear-to-r from-emerald-500 to-teal-500 text-white';
+      case 'QUARTERLY':
+        return 'bg-linear-to-r from-green-500 to-emerald-500 text-white';
+      case 'HALF_YEARLY':
+        return 'bg-linear-to-r from-teal-500 to-cyan-500 text-white';
+      case 'YEARLY':
+        return 'bg-linear-to-r from-lime-500 to-green-500 text-white';
+    }
+  };
 
   if (contracts.length === 0) {
     return (
@@ -79,8 +184,18 @@ export function ContractList({
   return (
     <div className="space-y-4">
       {contracts.map((contract, index) => {
-        const key = getContractKey(contract, index);
-        const cardColor = CARD_COLORS[index % CARD_COLORS.length];
+        const key = contract.contractId
+          ? contract.contractId
+          : `contract-${index}`;
+        const cardColors = [
+          'from-emerald-50 to-teal-50',
+          'from-green-50 to-emerald-50',
+          'from-teal-50 to-cyan-50',
+          'from-lime-50 to-green-50',
+          'from-cyan-50 to-sky-50',
+          'from-emerald-50 to-green-50',
+        ];
+        const cardColor = cardColors[index % cardColors.length];
 
         return (
           <Card
@@ -93,22 +208,22 @@ export function ContractList({
                   <div className="flex items-center gap-3 mb-2">
                     <h3>{contract.name}</h3>
                     <Badge
-                      className={`${CYCLE_COLORS[contract.cycle]} shadow-sm`}
+                      className={`${getCycleColor(contract.cycle)} shadow-sm`}
                     >
-                      {CYCLE_LABELS[contract.cycle]}
+                      {getCycleLabel(contract.cycle)}
                     </Badge>
                     {!contract.isActive && (
                       <Badge className="bg-linear-to-r from-red-500 to-red-500 text-white shadow-sm">
                         {contract.isActive ? '' : 'Gekündigt'}
                       </Badge>
                     )}
-                    {getDocumentCount(contract) > 0 && (
+                    {(contract.documents ?? []).length > 0 && (
                       <Badge
                         variant="outline"
                         className="gap-1 bg-white/80 backdrop-blur-sm"
                       >
                         <FileText className="w-3 h-3" />
-                        {getDocumentCount(contract)}
+                        {(contract.documents ?? []).length}
                       </Badge>
                     )}
                   </div>
@@ -119,7 +234,7 @@ export function ContractList({
                         💰 Betrag
                       </div>
                       <div className="text-lg bg-linear-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
-                        {formatCurrency(Number(contract.price))}
+                        {Number(contract.price).toFixed(2)} €
                       </div>
                     </div>
 
@@ -139,7 +254,9 @@ export function ContractList({
                         </div>
                         <div className="flex items-center gap-1 text-slate-900">
                           <Calendar className="w-4 h-4" />
-                          {formatDate(contract.startDate)}
+                          {new Date(contract.startDate).toLocaleDateString(
+                            'de-DE',
+                          )}
                         </div>
                       </div>
                     )}
@@ -171,7 +288,10 @@ export function ContractList({
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      if (handleDeleteConfirmation(contract.name)) {
+                      const confirmed = window.confirm(
+                        `Möchten Sie den Vertrag "${contract.name}" wirklich löschen?\n\nDiese Aktion kann nicht rückgängig gemacht werden.`,
+                      );
+                      if (confirmed) {
                         onDeleteContract(contract.contractId);
                       }
                     }}
@@ -193,25 +313,23 @@ export function ContractList({
                   <div className="flex items-center gap-2">
                     <FileText className="w-4 h-4 text-emerald-600" />
                     <span>📎 Dokumente & Unterlagen</span>
-                    {getDocumentCount(contract) > 0 && (
-                      <span className="text-sm bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full">
-                        {getDocumentCount(contract)}
-                      </span>
-                    )}
+                    <span
+                      className={`text-sm bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full ${(contract.documents ?? []).length > 0 ? '' : 'invisible'}`}
+                    >
+                      {(contract.documents ?? []).length}
+                    </span>
                   </div>
                 </AccordionTrigger>
                 <AccordionContent className="px-6 pb-6 bg-white/30 rounded-b-2xl">
                   <DocumentManager
                     documents={contract.documents ?? []}
+                    contractId={contract.contractId}
+                    token={token}
                     onAddDocument={(doc) =>
-                      handleAddDocument(contracts, contract.contractId, doc)
+                      handleAddDocument(contract.contractId, doc)
                     }
                     onDeleteDocument={(docId) =>
-                      handleDeleteDocument(
-                        contracts,
-                        contract.contractId,
-                        docId,
-                      )
+                      handleDeleteDocument(contract.contractId, docId)
                     }
                   />
                 </AccordionContent>
@@ -235,7 +353,10 @@ export function ContractList({
                   id="edit-name"
                   value={editingContract.name}
                   onChange={(e) =>
-                    updateEditingContract({ name: e.target.value })
+                    setEditingContract({
+                      ...editingContract,
+                      name: e.target.value,
+                    })
                   }
                   required
                 />
@@ -249,7 +370,10 @@ export function ContractList({
                   step="0.01"
                   value={editingContract.price}
                   onChange={(e) =>
-                    updateEditingContract({ price: parseFloat(e.target.value) })
+                    setEditingContract({
+                      ...editingContract,
+                      price: parseFloat(e.target.value),
+                    })
                   }
                   required
                 />
@@ -260,7 +384,8 @@ export function ContractList({
                 <Select
                   value={editingContract.cycle}
                   onValueChange={(value) =>
-                    updateEditingContract({
+                    setEditingContract({
+                      ...editingContract,
                       cycle: value as ContractDTO['cycle'],
                     })
                   }
@@ -282,7 +407,8 @@ export function ContractList({
                 <Select
                   value={editingContract.category}
                   onValueChange={(value) =>
-                    updateEditingContract({
+                    setEditingContract({
+                      ...editingContract,
                       category: value as ContractDTO['category'],
                     })
                   }
@@ -311,9 +437,16 @@ export function ContractList({
                 <Input
                   id="edit-startDate"
                   type="date"
-                  value={getFormattedEditStartDate()}
+                  value={
+                    editingContract.startDate
+                      ? new Date(editingContract.startDate)
+                          .toISOString()
+                          .split('T')[0]
+                      : ''
+                  }
                   onChange={(e) =>
-                    updateEditingContract({
+                    setEditingContract({
+                      ...editingContract,
                       startDate: new Date(e.target.value),
                     })
                   }
@@ -328,7 +461,12 @@ export function ContractList({
                   <Button
                     type="button"
                     variant="destructive"
-                    onClick={() => updateEditingContract({ isActive: true })}
+                    onClick={() =>
+                      setEditingContract({
+                        ...editingContract,
+                        isActive: true,
+                      })
+                    }
                     className="bg-linear-to-r from-red-600 to-orange-500 text-white hover:from-red-700 hover:to-orange-600"
                   >
                     Vertrag reaktivieren

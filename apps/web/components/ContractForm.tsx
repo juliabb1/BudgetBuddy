@@ -1,6 +1,6 @@
 import { ContractDTO, CreateContractDto } from '@repo/shared-types/contract';
 import { Plus } from 'lucide-react';
-import { useContractForm } from '../hooks/useContractForm';
+import { useState } from 'react';
 import { Button } from './ui/button';
 import {
   Dialog,
@@ -26,21 +26,39 @@ interface ContractFormProps {
 }
 
 export function ContractForm({ onAddContract }: ContractFormProps) {
-  const {
-    open,
-    setOpen,
-    name,
-    setName,
-    price,
-    setPrice,
-    cycle,
-    setCycle,
-    category,
-    setCategory,
-    setStartDate,
-    formattedStartDate,
-    handleSubmit,
-  } = useContractForm(onAddContract);
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState('');
+  const [price, setPrice] = useState('');
+  const [cycle, setCycle] = useState<ContractDTO['cycle']>('MONTHLY');
+  const [category, setCategory] =
+    useState<ContractDTO['category']>('INSURANCE');
+  const [startDate, setStartDate] = useState<Date>(new Date());
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!name || !price || !category) {
+      return;
+    }
+
+    onAddContract({
+      name,
+      price: parseFloat(price),
+      cycle,
+      startDate,
+      category,
+      debitDayOfMonth: 1,
+      isActive: true,
+    });
+
+    // Reset form
+    setName('');
+    setPrice('');
+    setCycle('MONTHLY');
+    setCategory('INSURANCE');
+    setStartDate(new Date());
+    setOpen(false);
+  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -134,7 +152,7 @@ export function ContractForm({ onAddContract }: ContractFormProps) {
             <Input
               id="dueDate"
               type="date"
-              value={formattedStartDate}
+              value={startDate.toISOString().split('T')[0]}
               onChange={(e) => setStartDate(new Date(e.target.value))}
             />
           </div>

@@ -1,41 +1,118 @@
-import { Download, Eye, FileText, Trash2, Upload } from 'lucide-react';
-import Image from 'next/image';
-import { useDocumentManager } from '../hooks/useDocumentManager';
-import { formatDate } from '../lib/contractUtils';
-import { Button } from './ui/button';
+import { useState } from 'react';
+import { Document } from '@repo/shared-types/contract';
 import { Card } from './ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
+import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-
-export interface Document {
-  id: string;
-  name: string;
-  data: string;
-  type: string;
-  uploadDate: string;
-}
+import { FileText, Upload, Download, Eye, Trash2 } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
+import Image from 'next/image';
 
 interface DocumentManagerProps {
   documents: Document[];
-  onAddDocument: (document: Omit<Document, 'id' | 'uploadDate'>) => void;
+  onAddDocument: (document: Document) => void;
   onDeleteDocument: (id: string) => void;
+  token: string;
 }
 
 export function DocumentManager({
   documents,
   onAddDocument,
   onDeleteDocument,
-}: DocumentManagerProps) {
-  const {
-    isUploading,
-    previewDoc,
-    handleFileUpload,
-    handleDownload,
-    handlePreview,
-    closePreview,
-    isImageFile,
-  } = useDocumentManager(onAddDocument);
+  contractId,
+  token,
+}: DocumentManagerProps & { contractId: string }) {
+  const [isUploading, setIsUploading] = useState(false);
+  const [previewDoc, setPreviewDoc] = useState<Document | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
+
+  const uploadFile = async (file: File) => {
+    // Limit file size to 5MB
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Datei ist zu groß. Maximale Größe: 5MB');
+      return;
+    }
+
+    setIsUploading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/contracts/${contractId}/documents`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: formData,
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+
+      const newDocument = await response.json();
+      onAddDocument(newDocument);
+    } catch (error) {
+      console.error('Upload error:', error);
+      alert('Fehler beim Hochladen der Datei');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await uploadFile(file);
+    e.target.value = '';
+  };
+
+  const handleDownload = (doc: Document) => {
+    const link = document.createElement('a');
+    link.href = doc.data; // This is now the download URL
+    link.target = '_blank'; // Open in new tab for download
+    link.click();
+  };
+
+  const handlePreview = (doc: Document) => {
+    setPreviewDoc(doc);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  };
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length === 0) return;
+
+    const file = files[0]; // Only handle first file for now
+    if (!file) return;
+
+    await uploadFile(file);
+  };
 
   return (
     <div className="space-y-4">
@@ -66,73 +143,107 @@ export function DocumentManager({
         />
       </div>
 
-      {documents.length === 0 ? (
-        <Card className="p-8 text-center border-2 border-dashed border-purple-300 bg-linear-to-br from-purple-50 to-pink-50">
-          <div className="text-6xl mb-3">📄</div>
-          <p className="text-slate-600 text-sm mb-1">
-            Noch keine Dokumente hochgeladen
-          </p>
-          <p className="text-slate-500 text-xs">
-            PDF, DOC, DOCX, JPG, PNG (max. 5MB)
-          </p>
-        </Card>
-      ) : (
-        <div className="space-y-2">
-          {documents.map((doc) => (
-            <Card
-              key={doc.id}
-              className="p-4 bg-white/80 backdrop-blur-sm hover:shadow-md transition-all border border-purple-100"
+      <div
+        className={`transition-all duration-200`}
+        onDragOver={handleDragOver}
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+        {documents.length === 0 ? (
+          <Card
+            className={`p-8 text-center border-2 border-dashed transition-all duration-200 gap-2 ${
+              isDragOver
+                ? 'border-purple-500 bg-purple-100 shadow-lg scale-[102%]'
+                : 'border-purple-300 bg-linear-to-br from-purple-50 to-pink-50'
+            }`}
+          >
+            <div
+              className={`text-6xl mb-3 transition-transform duration-200 ${
+                isDragOver ? 'scale-105' : 'scale-100'
+              }`}
             >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <div className="bg-linear-to-br from-purple-500 to-pink-500 p-2 rounded-lg">
-                    <FileText className="w-5 h-5 text-white shrink-0" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm text-slate-900 truncate">
-                      {doc.name}
+              {isDragOver ? '📥' : '📄'}
+            </div>
+            <p className="text-slate-600 text-sm mb-1">
+              {isDragOver
+                ? 'Datei hier ablegen'
+                : 'Noch keine Dokumente hochgeladen'}
+            </p>
+            <p className="text-slate-500 text-xs">
+              {isDragOver
+                ? 'PDF, DOC, DOCX, JPG, PNG (max. 5MB)'
+                : 'Ziehe Dateien hierher oder klicke auf "Hochladen"'}
+            </p>
+            <p className="text-slate-500 text-xs mt-1">
+              PDF, DOC, DOCX, JPG, PNG (max. 5MB)
+            </p>
+          </Card>
+        ) : (
+          <div
+            className={`space-y-2 transition-all duration-200 ${
+              isDragOver
+                ? 'ring-2 ring-purple-400 ring-opacity-50 rounded-lg p-2 scale-[102%]'
+                : ''
+            }`}
+          >
+            {documents.map((doc) => (
+              <Card
+                key={doc.id}
+                className="p-4 bg-white/80 backdrop-blur-sm hover:shadow-md transition-all border border-purple-100"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="bg-linear-to-br from-purple-500 to-pink-500 p-2 rounded-lg">
+                      <FileText className="w-5 h-5 text-white shrink-0" />
                     </div>
-                    <div className="text-xs text-slate-500">
-                      📅 {formatDate(doc.uploadDate)}
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm text-slate-900 truncate">
+                        {doc.name}
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        📅{' '}
+                        {new Date(doc.uploadDate).toLocaleDateString('de-DE')}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="flex gap-2 ml-2">
-                  {isImageFile(doc.type) && (
+                  <div className="flex gap-2 ml-2">
+                    {doc.type.startsWith('image/') && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handlePreview(doc)}
+                        className="hover:bg-blue-50"
+                      >
+                        <Eye className="w-4 h-4 text-blue-600" />
+                      </Button>
+                    )}
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => handlePreview(doc)}
-                      className="hover:bg-blue-50"
+                      onClick={() => handleDownload(doc)}
+                      className="hover:bg-green-50"
                     >
-                      <Eye className="w-4 h-4 text-blue-600" />
+                      <Download className="w-4 h-4 text-green-600" />
                     </Button>
-                  )}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDownload(doc)}
-                    className="hover:bg-green-50"
-                  >
-                    <Download className="w-4 h-4 text-green-600" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onDeleteDocument(doc.id)}
-                    className="hover:bg-red-50"
-                  >
-                    <Trash2 className="w-4 h-4 text-red-600" />
-                  </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onDeleteDocument(doc.id)}
+                      className="hover:bg-red-50"
+                    >
+                      <Trash2 className="w-4 h-4 text-red-600" />
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            </Card>
-          ))}
-        </div>
-      )}
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
 
-      <Dialog open={!!previewDoc} onOpenChange={closePreview}>
+      <Dialog open={!!previewDoc} onOpenChange={() => setPreviewDoc(null)}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>{previewDoc?.name}</DialogTitle>
@@ -142,8 +253,6 @@ export function DocumentManager({
               <Image
                 src={previewDoc.data}
                 alt={previewDoc.name}
-                width={800}
-                height={600}
                 className="w-full h-auto rounded-lg"
               />
             </div>
