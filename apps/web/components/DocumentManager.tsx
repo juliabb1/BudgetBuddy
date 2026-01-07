@@ -42,8 +42,6 @@ export function DocumentManager({
     getEmptyMainText,
     getEmptySubText,
     getDocumentListClass,
-    isImageDocument,
-    isPdfDocument,
     canPreview,
     formatUploadDate,
     getPreviewType,

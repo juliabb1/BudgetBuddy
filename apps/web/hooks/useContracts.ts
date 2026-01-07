@@ -37,8 +37,9 @@ export function useContracts(token: string | undefined) {
 
         const data = await res.json();
         setContracts(data);
-      } catch (err: any) {
-        setError(err.message ?? 'Unbekannter Fehler');
+      } catch (err) {
+        const error = err as { message?: string };
+        setError(error.message ?? 'Unbekannter Fehler');
         console.error('Fehler beim Laden der Verträge:', err);
       } finally {
         setIsLoading(false);
@@ -96,8 +97,9 @@ export function useContracts(token: string | undefined) {
         const updatedContracts = await contractsRes.json();
         setContracts(updatedContracts);
       }
-    } catch (err: any) {
-      setError(err.message ?? 'Unbekannter Fehler');
+    } catch (err) {
+      const error = err as { message?: string };
+      setError(error.message ?? 'Unbekannter Fehler');
       console.error('Fehler beim Erstellen des Vertrags:', err);
       throw err;
     }
@@ -127,10 +129,11 @@ export function useContracts(token: string | undefined) {
 
       // Optimistic Update
       setContracts(contracts.filter((contract) => contract.contractId !== id));
-    } catch (err: any) {
+    } catch (err) {
+      const error = err as { message?: string };
       // Rollback bei Fehler
       setContracts(originalContracts);
-      setError(err.message || 'Fehler beim Löschen');
+      setError(error.message || 'Fehler beim Löschen');
       console.error('Fehler beim Löschen des Vertrags:', err);
       throw err;
     }
@@ -139,7 +142,9 @@ export function useContracts(token: string | undefined) {
   // Vertrag aktualisieren
   const updateContract = async (
     id: string,
-    updatedContract: Omit<ContractDTO, 'contractId'>,
+    updatedContract: Partial<
+      Omit<ContractDTO, 'contractId' | 'userId' | 'documents'>
+    >,
   ) => {
     if (!token) return;
 
@@ -168,13 +173,14 @@ export function useContracts(token: string | undefined) {
       // Update mit Server-Response
       setContracts(
         contracts.map((contract) =>
-          contract.contractId === id ? data : contract,
+          contract.contractId === id ? { ...contract, ...data } : contract,
         ),
       );
-    } catch (err: any) {
+    } catch (err) {
+      const error = err as { message?: string };
       // Rollback bei Fehler
       setContracts(originalContracts);
-      setError(err.message || 'Fehler beim Aktualisieren');
+      setError(error.message || 'Fehler beim Aktualisieren');
       console.error('Fehler beim Aktualisieren des Vertrags:', err);
       throw err;
     }
@@ -182,6 +188,7 @@ export function useContracts(token: string | undefined) {
 
   return {
     contracts,
+    setContracts,
     isLoading,
     error,
     addContract,

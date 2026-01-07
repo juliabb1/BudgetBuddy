@@ -49,7 +49,6 @@ export function ContractList({
 }: ContractListProps) {
   const {
     editingContract,
-    setEditingContract,
     isDialogOpen,
     setIsDialogOpen,
     cancellingContract,
@@ -60,14 +59,12 @@ export function ContractList({
     handleCancelContract,
     handleDeleteContract,
     handleConfirmCancellation,
-    getCycleColor,
     getCycleBadgeClass,
     isContractCancelled,
     getCancelledBadgeText,
     handleDeleteDocument,
     handleAddDocument,
     getFormattedEditStartDate,
-    getContractKey,
     getDocumentCount,
     hasDocuments,
     getDocumentBadgeClass,

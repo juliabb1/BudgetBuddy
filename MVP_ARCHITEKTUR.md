@@ -11,675 +11,243 @@
 
 ---
 
-## Was ist MVP?
+## Was ist MVP? - Die Grundlagen
 
-**MVP** steht für **Model-View-Presenter**. Das ist ein Architekturmuster, das uns hilft, unseren Code zu organisieren.
+### Die Idee hinter MVP
 
-### Die Grundidee (ganz einfach):
+**MVP** steht für **Model-View-Presenter**. Es ist ein Muster, das uns hilft, Code sauber zu organisieren.
 
-Stell dir vor, du hast eine Webseite, auf der Benutzer ihre Verträge verwalten können. Ohne ein Muster würdest du vielleicht alles in eine Datei schreiben:
+Stell dir eine Küche vor:
 
-```typescript
-// ❌ Alles durcheinander - NICHT GUT!
-function VertragSeite() {
-  // Datenbank-Logik
-  const vertrag = database.find(...);
+- **Model** = Der Kühlschrank (speichert Zutaten/Daten)
+- **View** = Der gedeckte Tisch (zeigt das fertige Essen)
+- **Presenter** = Der Koch (holt Zutaten, bereitet sie zu, serviert sie)
 
-  // Berechnungen
-  const preis = vertrag.preis * 1.19;
-
-  // HTML anzeigen
-  return <div>{preis}</div>;
-
-  // Button-Klicks verarbeiten
-  onClick = () => { database.save(...) }
-}
-```
-
-**Problem:** Alles ist vermischt! Schwer zu verstehen, schwer zu testen, schwer zu ändern.
-
-**Lösung mit MVP:** Wir teilen den Code in drei klare Bereiche auf:
+### Das Ziel
 
 ```
-Model      → Kümmert sich um die Daten
-View       → Zeigt die Oberfläche
-Presenter  → Verbindet beides und enthält die Logik
+┌─────────────────────────────────────────┐
+│ Wir teilen den Code in 3 Bereiche auf: │
+└─────────────────────────────────────────┘
+
+📦 MODEL (Datenbank/Backend)
+   → Was sind die Daten?
+   → Wie speichere ich sie?
+
+🎨 VIEW (React-Komponenten)
+   → Wie sieht es aus?
+   → Was sieht der Benutzer?
+
+🧠 PRESENTER (Logik in page.tsx)
+   → Was passiert, wenn...?
+   → Wie verbinde ich alles?
 ```
 
 ---
 
-## Warum MVP?
+## Warum brauchen wir MVP?
 
-### Vorteile auf einen Blick:
+### Vorteil 1: Ordnung
 
-**1. Übersichtlichkeit**
+Durch Aufteilung in Model, View und Presenter wird der Code übersichtlicher:
 
-- Jeder Code hat seinen Platz
-- Leichter zu finden, was man sucht
+- **Model** (Backend) = Datenbank-Logik getrennt
+- **View** (Komponenten) = UI-Code wiederverwendbar
+- **Presenter** (page.tsx) = Business-Logik zentral
 
-**2. Wiederverwendbarkeit**
+### Vorteil 2: Wiederverwendbarkeit
 
-- Dieselbe View kann mit verschiedenen Presentern arbeiten
-- Derselbe Presenter kann mit verschiedenen Views arbeiten
+```typescript
+// Die gleichen View-Komponenten können überall genutzt werden
+<ContractForm onAddContract={addContract} />
+<ContractList contracts={contracts} onDeleteContract={deleteContract} />
+```
 
-**3. Testbarkeit**
+### Vorteil 3: Testbarkeit
 
-- Jeder Teil kann einzeln getestet werden
-- Keine echte Datenbank für Tests nötig
+Jeder Teil kann separat getestet werden:
 
-**4. Teamarbeit**
-
-- Eine Person kann an der View arbeiten
-- Eine andere an der Geschäftslogik
-- Ohne sich gegenseitig zu stören
+- Model: API-Tests
+- View: Component-Tests
+- Presenter: Integration-Tests
 
 ---
 
-## Die drei Komponenten
+## Die drei Komponenten im Detail
 
-### 1️⃣ Model (Die Daten)
+### 1️⃣ MODEL - Die Daten
 
-**Was macht das Model?**
+**Was ist das Model?**
+Das Model ist **alles, was mit Daten zu tun hat**:
 
-- Speichert Daten in der Datenbank
-- Holt Daten aus der Datenbank
-- Definiert, wie Daten aussehen
+- Datenbank-Operationen
+- API-Endpunkte im Backend
+- Datenstrukturen
 
-**Einfaches Beispiel (aus packages/shared-types):**
+**In unserem Projekt:**
 
 ```typescript
-// Das ist ein Vertrag - die Datenstruktur (Model)
+// ────────────────────────────────────────
+// packages/shared-types/src/contract.ts
+// ────────────────────────────────────────
+// Definiert, WIE ein Vertrag aussieht
+
 export const ContractDTO = z.object({
   contractId: z.string(),
-  userId: z.string(),
-  name: z.string(),           // z.B. "Kfz-Versicherung"
-  price: z.number(),          // z.B. 780
-  cycle: CycleSchema,         // MONTHLY, QUARTERLY, ...
-  startDate: z.date(),
+  name: z.string(),
+  price: z.number(),
+  cycle: z.enum(['MONTHLY', 'YEARLY']),
+  startDate: z.string(),
+  debitDayOfMonth: z.number(),
+  category: z.string(),
   isActive: z.boolean(),
-  category: CategorySchema,   // INSURANCE, ENERGY, ...
-  documents: z.array(...)
+  documents: z.array(DocumentDTO).optional(),
 });
 ```
 
-**Backend Service (macht die eigentliche Arbeit):**
+**Was passiert hier?**
+
+- Wir definieren die **Struktur** eines Vertrags
+- `z.object()` ist ein Zod-Schema → validiert Daten
+- Jedes Feld hat einen Typ (`string`, `number`, etc.)
+- Gilt für Frontend UND Backend (shared types!)
+
+---
 
 ```typescript
+// ────────────────────────────────────────
 // apps/backend/src/contract/contract.service.ts
+// ────────────────────────────────────────
+
 @Injectable()
 export class ContractService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
-  // Alle Verträge eines Benutzers holen
   async getContractsByUserId(userId: string) {
-    return this.prisma.contract.findMany({
+    const contracts = await this.prisma.contract.findMany({
       where: { userId },
+      include: { documents: true },
       orderBy: { startDate: 'desc' },
     });
-  }
 
-  // Einen neuen Vertrag speichern
-  async createContract(contract: Prisma.ContractCreateInput) {
-    return this.prisma.contract.create({ data: contract });
+    return contracts;
   }
 }
 ```
 
-**Wichtig zu verstehen:**
+**Was passiert hier?**
 
-- Das Model kennt keine Buttons oder Formulare
-- Es weiß nur: "Wie speichere ich Daten?" und "Wie hole ich Daten?"
+- `getContractsByUserId()` ist eine **Model-Funktion**
+- Fragt die Datenbank: "Gib mir ALLE Verträge von diesem User"
+- `where: { userId }` → Filter
+- `include: { documents: true }` → Lade auch Dokumente mit
+- `orderBy: { startDate: 'desc' }` → Sortierung (neueste zuerst)
 
 ---
 
-### 2️⃣ View (Die Oberfläche)
-
-**Was macht die View?**
-
-- Zeigt Dinge auf dem Bildschirm
-- Empfängt Benutzer-Eingaben (Klicks, Tippen)
-- Gibt Informationen an den Presenter weiter
-
-**Einfaches Beispiel (aus apps/web/components/ContractList.tsx):**
-
 ```typescript
-// Eine Liste von Verträgen anzeigen
-export function ContractList({ contracts, onDeleteContract, onUpdateContract }) {
-  // Presenter Hook nutzen
-  const { handleEdit, handleDeleteConfirmation } = useContractList(onUpdateContract);
+// Einen Vertrag erstellen
+async createContract(data: Prisma.ContractCreateInput) {
+  return this.prisma.contract.create({ data });
+}
 
-  return (
-    <div className="space-y-4">
-      {contracts.map((contract) => (
-        <Card key={contract.contractId}>
-          <div className="p-6">
-            {/* Name anzeigen */}
-            <h3>{contract.name}</h3>
-
-            {/* Preis anzeigen */}
-            <span>{formatCurrency(contract.price)}</span>
-
-            {/* Buttons */}
-            <Button onClick={() => handleEdit(contract)}>
-              Bearbeiten
-            </Button>
-            <Button onClick={() => {
-              if (handleDeleteConfirmation(contract.name)) {
-                onDeleteContract(contract.contractId);
-              }
-            }}>
-              Löschen
-            </Button>
-          </div>
-        </Card>
-      ))}
-    </div>
-  );
+// Einen Vertrag löschen
+async deleteContract(contractId: string) {
+  return this.prisma.contract.delete({
+    where: { contractId }
+  });
 }
 ```
 
-**Wichtig zu verstehen:**
+**Was passiert hier?**
 
-- Die View macht KEINE Berechnungen
-- Sie fragt NICHT die Datenbank ab
-- Sie zeigt nur das, was sie bekommt
-- Sie meldet Klicks an den Presenter
+- `create()` → Fügt einen neuen Vertrag in die Datenbank ein
+- `delete()` → Löscht einen Vertrag anhand der ID
+- Das Model weiß NUR über Datenbank-Operationen Bescheid
 
----us apps/web/hooks/useContractList.ts):\*\*
+**Wichtig:**
 
-```typescript
-// useContractList ist unser Presenter
-export function useContractList(onUpdateContract) {
-  const [editingContract, setEditingContract] = useState(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-
-  // Wenn Benutzer "Bearbeiten" klickt
-  const handleEdit = (contract: ContractDTO) => {
-    setEditingContract(contract);
-    setIsDialogOpen(true);
-  };
-
-  // Wenn Benutzer "Speichern" klickt
-  const handleUpdate = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (editingContract) {
-      // Sage dem Model: Update den Vertrag
-      onUpdateContract(editingContract.contractId, {
-        name: editingContract.name,
-        price: Number(editingContract.price),
-        cycle: editingContract.cycle,
-        // ... weitere Felder
-      });
-      setIsDialogOpen(false);
-    }
-  };
-
-  // Löschbestätigung
-  const handleDeleteConfirmation = (name: string) => {
-    return window.confirm(`Vertrag "${name}" wirklich löschen?`);
-  };
-
-  // Gib alles zurück, was die View braucht
-  return { editingContract, handleEdit, handleUpdate, handleDeleteConfirmation
-      // 3. Update die lokalen Daten
-      setVertraege(vertraege.filter(v => v.id !== id));
-    }
-  };
-
-  // Gib alles zurück, was die View braucht
-  return {
-    vertraege,
-    handleLoeschen
-  };
-}
-```
-
-**Wichtig zu verstehen:**
-
-- Der Presenter ist das "Gehirn"
-- Er verbindet Model und View
-- Er enthält die Logik: "Was passiert, wenn...?"
+- ✅ Model weiß NUR über Daten Bescheid
+- ❌ Model weiß NICHT, wie Buttons aussehen
+- ❌ Model weiß NICHT, ob Daten auf Desktop oder Handy angezeigt werden
 
 ---
 
-## Wie arbeiten sie zusammen?
+### 2️⃣ VIEW - Die Oberfläche
 
-### Ein vollständiges Beispiel
+**Was ist die View?**
+Die View ist **alles, was der Benutzer sieht**:
 
-Schauen wir uns an, wie alle drei zusammenarbeiten, wenn ein Benutzer einen Vertrag löschen will:
+- Buttons
+- Formulare
+- Listen
+- Farben, Abstände
 
-```
-Schritt 1: Benutzer klickt "Löschen"-Button
-    ↓
-Schritt 2: View ruft onLoeschen() auf
-    ↓
-Schritt 3: Presenter (Hook) führt handleLoeschen() aus
-    ↓
-Schritt 4: Presenter fragt Benutzer: "Wirklich löschen?"
-    ↓
-Schritt 5: Presenter sagt dem Model: "Lösche Vertrag ID 123"
-    ↓
-Schritt 6: Model löscht aus der Datenbank
-    ↓
-Schritt 7: Presenter aktualisiert die Vertrags-Liste
-    ↓
-Schritt 8: View zeigt aktualisierte Liste
-```
-
-**Als Code:**
-
-````typescript
-// ============================================
-// VIEW (Was der Benutzer sieht)
-// ============================================
-function VertragsSeite() {
-  // Der Presenter gibt uns alles, was wir brauchen
-  const { vertraege, handleLoeschen } = useVertragsListe();
-
-  return (
-    <VertragsListe
-      vertraege={vertraege}
-      onLoeschen={handleLoeschen}
-    />
-  );
-}
-
-// ============================================
-// PRESENTER (Die Logik)
-// ============================================
-function useVertragsListe() {
-  const [vertraege, setVertraege] = useState([]);
-
-  const handleLoeschen = async (id: string) => {
-    // Benutzer-Interaktion
-    if (!confirm('Wirklich löschen?')) return;
-
-    // Mit Model kommunizieren
-    await VertragsAPI.loeschen(id);
-
-    // Lokale Daten aktualisieren
-    setVertraege(alt => alt.filter(v => v.id !== id));
-  };
-
-  return { vertraege, handleLoeschen };
-}
-
-// ============================================
-// MODEL (Backend API)
-// ============================================
-class VertragsAPI {
-  static async loeschen(id: string) {
-    // Spricht mit der Datenbank
-    await fetch(`/api/vertraege/${id}`, {
-      method: 'DELETE'
-    });
-  }
-} aus apps/web/components/ContractForm.tsx):**
-```typescript
-export function ContractForm({ onAddContract }) {
-  // Presenter Hook nutzen
-  const { name, setName, price, setPrice, cycle, setCycle, handleSubmit }
-    = useContractForm(onAddContract);
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <Label htmlFor="name">Vertragsname</Label>
-        <Input
-          id="name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="z.B. Kfz-Versicherung"
-          required
-        />
-      </div>
-
-      <div>
-        <Label htmlFor="price">Betrag (€)</Label>
-        <Input
-          id="price"
-          type="number"
-          value={price}
-          onChange={(e) => setPrice(e.target.value)}
-          required
-        />
-      </div>
-
-      <Button type="submit">Vertrag hinzufügen</Button>
-    </form>
-  );
-}
-````
-
-**Presenter (aus apps/web/hooks/useContractForm.ts):**
+**In unserem Projekt:**
 
 ```typescript
-export function useContractForm(onAddContract) {
+// ────────────────────────────────────────
+// apps/web/components/ContractForm.tsx
+// ────────────────────────────────────────
+
+interface ContractFormProps {
+  onAddContract: (contract: CreateContractDto) => void;
+}
+
+export function ContractForm({ onAddContract }: ContractFormProps) {
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
-  const [cycle, setCycle] = useState('MONTHLY');
-  const [category, setCategory] = useState('INSURANCE');
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    // Validierung
-    if (!name || !price) return;
-
-    // Daten zusammenstellen
+  const handleSubmit = () => {
     onAddContract({
       name,
       price: parseFloat(price),
-      cycle,
-      category,
-      startDate: new Date(),
-      isActive: true,
-      debitDayOfMonth: 1,
-      documents: [],
+      // ... weitere Felder
     });
-
-    // Formular zurücksetzen
-    setName('');
-    setPrice('');
   };
 
-  return { name, setName, price, setPrice, cycle, setCycle, handleSubmit };
-}
-```
-
-**Model (aus apps/backend/src/contract/contract.controller.ts):**
-
-```typescript
-@Controller('contracts')
-export class ContractController {
-  @UseGuards(JwtAuthGuard)
-  @Post()
-  async createContract(@Body() contract: CreateContractDto, @Req() req) {
-    const user = req.user as { userId?: string };
-    // In Datenbank speichern
-    return this.contractService.createContract({
-      ...contract,
-      user: { connect: { userId: user.userId } }
-    });
-  }
-  return { handleSpeichern };
-}
-```
-
-**Model (Backend):**
-
-```typescript
-// Backend Controller
-@Post('/vertraege')
-async erstelleVertrag(@Body() vertrag) {
-  // In Datenbank speichern
-  return this.service.erstellen(vertrag);
-}
-```
-
-**Zusammenspiel:**
-
-```
-Benutzer füllt Formular aus
-  → View sammelt Daten
-    → Presenter validiert & erweitert Daten
-      → Model speichert in Datenbank
-```
-
----
-
-### Beispiel 2: Verträge anzeigen beim Laden der Seite
-
-**Presenter (lädt Daten):**
-
-```typescript
-function useVertraege() {
-  const [vertraege, setVertraege] = useState([]);
-  const [istAmLaden, setIstAmLaden] = useState(true);
-
-  // Beim Start: Daten laden
-  useEffect(() => {
-    async function datenLaden() {
-      setIstAmLaden(true);
-
-      try {
-        // Model fragen
-        const daten = await VertragsAPI.alle();
-        setVertraege(daten);
-      } catch (fehler) {
-        console.error('Fehler beim Laden:', fehler);
-      } finally {
-        setIstAmLaden(false);
-      }
-    }
-
-    datenLaden();
-  }, []); // [] = nur einmal beim Start
-
-  return { vertraege, istAmLaden };
-}
-```
-
-**View (zeigt Daten oder Ladebalken):**
-
-```typescript
-function VertragsSeite() {
-  const { vertraege, istAmLaden } = useVertraege();
-
-  if (istAmLaden) {
-    return <div>Lädt...</div>;
-  }
-
   return (
-    <div>
-      <h1>Du hast {vertraege.length} Verträge</h1>
-      {vertraege.map(v => (
-        <div key={v.id}>{v.name}</div>
-      ))}
-    </div>
+    <form>
+      <input value={name} onChange={(e) => setName(e.target.value)} />
+      <input value={price} onChange={(e) => setPrice(e.target.value)} />
+      <button onClick={handleSubmit}>Hinzufügen</button>
+    </form>
   );
 }
 ```
 
-**Model (Backend):**
+**Was passiert hier?**
 
-```typescript
-@Get('/vertraege')
-async alleVertraege(@Req() request) {
-  const benutzerId = request.user.id;
-
-  // Aus Datenbank holen
-  return this.service.findeAlleVon(benutzerId);
-}
-```
+- Die Komponente **bekommt eine Funktion** als Prop: `onAddContract`
+- Wenn Formular abgeschickt wird → ruft `onAddContract()` auf
+- Die Komponente weiß NICHT, was dann passiert (API-Call, etc.)
+- Sie zeigt nur das Formular an
 
 ---
 
-## Der Datenfluss
-
-### Von Benutzer zu Datenbank (Speichern)
-
-```
-┌─────────────┐
-│  BENUTZER   │ Klickt "Speichern"
-└──────┬──────┘
-       │
-       ▼
-┌─────────────────────────┐
-│  VIEW                   │
-│  (Formular)             │
-│                         │
-│  onSpeichern(daten)     │ ← Ruft Callback auf
-└──────┬──────────────────┘
-       │
-       ▼
-┌─────────────────────────┐
-│  PRESENTER              │
-│  (useFormular Hook)     │
-│                         │
-│  1. Validieren          │ ← Ist alles okay?
-│  2. Ergänzen            │ ← Datum hinzufügen
-│  3. API aufrufen        │ ← An Backend senden
-└──────┬──────────────────┘
-       │
-       ▼
-┌─────────────────────────┐
-│  MODEL                  │
-│  (Backend Service)      │
-│                         │
-│  1. In DB speichern     │ ← Datenbank-Operation
-│  2. Bestätigung zurück  │
-└─────────────────────────┘
-```
-
-### Von Datenbank zu Benutzer (Anzeigen)
-
-```
-┌─────────────────────────┐
-│  MODEL                  │
-│  (Backend Service)      │
-│                         │
-│  Daten aus DB laden     │
-└──────┬──────────────────┘
-       │
-       ▼
-┌─────────────────────────┐
-│  PRESENTER              │
-│  (useVertraege Hook)    │
-│                         │
-│  1. Daten empfangen     │
-│  2. State aktualisieren │ ← setVertraege(daten)
-└──────┬──────────────────┘
-// apps/backend/src/contract/contract.service.ts
-@Injectable()
-export class ContractService {
-  constructor(private prisma: PrismaService) {}
-
-  // Alle Verträge eines Users
-  async getContractsByUserId(userId: string) {
-    return this.prisma.contract.findMany({
-      where: { userId },
-      orderBy: { startDate: 'desc' }
-    });
-  }
-
-  // Vertrag aktualisieren
-  async updateContract(contractId: string, contract: Prisma.ContractUpdateInput) {
-    return this.prisma.contract.update({
-      where: { contractId },
-      data: contract
-    });
-  }
-
-  // Vertrag löschen
-  async deleteContract(contractId: string) {
-    return this.prisma.contract.delete({
-      where: { contractId }
-    });
-  }
-}
-```
-
-### Presenter (Frontend Hooks)
-
-```
-apps/web/hooks/
-├── useContractList.ts    ← Logik für Vertragsliste
-├── useContractForm.ts    ← Logik für Formular
-└── useCostCalculations.ts ← Logik für Berechnungen
-```
-
-**Beispiel useContractList.ts:**
-
 ```typescript
-// apps/web/hooks/useContractList.ts
-export function useContractList(onUpdateContract) {
-  const [editingContract, setEditingContract] = useState(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-
-  const handleEdit = (contract) => {
-    setEditingContract(contract);
-    setIsDialogOpen(true);
-  };
-
-  const handleUpdate = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (editingContract) {
-      onUpdateContract(editingContract.contractId, {
-        ...editingContract,
-        price: Number(editingContract.price),
-      });
-      setIsDialogOpen(false);
-    }
-  };
-
-  return { editingContract, isDialogOpen, handleEdit, handleUpdate };
-}
-```
-
-### View (Frontend Komponenten)
-
-```
-apps/web/components/
-├── ContractList.tsx      ← Zeigt Vertragsliste
-├── ContractForm.tsx      ← Zeigt Formular
-└── CostSummary.tsx       ← Zeigt Kostenübersicht
-```
-
-**Beispiel ContractList.tsx:**
-
-```typescript
+// ────────────────────────────────────────
 // apps/web/components/ContractList.tsx
-export function ContractList({ contracts, onDeleteContract, onUpdateContract }) {
-  // Presenter Hook nutzen
-  const { handleEdit, handleDeleteConfirmation } = useContractList(onUpdateContract);
+// ────────────────────────────────────────
 
-  return (
-    <div className="space-y-4">
-      {contracts.map(contract => (
-        <Card key={contract.contractId}>
-          <h3>{contract.name}</h3>
-          <span>{formatCurrency(contract.price)}</span>
-
-          <Button onClick={() => handleEdit(contract)}>
-            <Edit /> Bearbeiten
-          </Button>
-          <Button onClick={() => {
-            if (handleDeleteConfirmation(contract.name)) {
-              onDeleteContract(contract.contractId);
-            }
-          }}>
-            <Trash2 /> Löschen
-          </Button>
-        </Card
-  return { editingContract, handleEdit };
+interface ContractListProps {
+  contracts: ContractDTO[];
+  onDeleteContract: (id: string) => void;
+  onUpdateContract: (id: string, data: Partial<ContractDTO>) => void;
 }
-```
 
-### View (Frontend Komponenten)
-
-```
-apps/web/components/
-├── ContractList.tsx      ← Zeigt Vertragsliste
-├── ContractForm.tsx      ← Zeigt Formular
-└── CostSummary.tsx       ← Zeigt Kostenübersicht
-```
-
-**Beispiel ContractList.tsx:**
-
-```typescript
-export function ContractList({ contracts, onDelete }) {
-  const { handleEdit } = useContractList(); // Presenter
-
+export function ContractList({
+  contracts,
+  onDeleteContract,
+  onUpdateContract
+}) {
   return (
     <div>
       {contracts.map(contract => (
-        <div key={contract.id}>
+        <div key={contract.contractId}>
           <h3>{contract.name}</h3>
-          <button onClick={() => handleEdit(contract)}>
-            Bearbeiten
-          </button>
-          <button onClick={() => onDelete(contract.id)}>
+          <p>{contract.price} €</p>
+          <button onClick={() => onDeleteContract(contract.contractId)}>
             Löschen
           </button>
         </div>
@@ -689,37 +257,519 @@ export function ContractList({ contracts, onDelete }) {
 }
 ```
 
+**Was passiert hier?**
+
+- Komponente bekommt `contracts` (Daten zum Anzeigen)
+- Komponente bekommt `onDeleteContract` (Funktion zum Löschen)
+- Zeigt jeden Vertrag als Karte an
+- Bei Klick auf "Löschen" → ruft Callback auf
+
+**Wichtig:**
+
+- ✅ View ZEIGT nur, was sie bekommt
+- ✅ View MELDET Klicks nach außen (über Callbacks)
+- ❌ View macht KEINE Berechnungen
+- ❌ View spricht NICHT direkt mit der Datenbank
+
 ---
 
-## Zusammenfassung für Anfänger
+### 3️⃣ PRESENTER - Die Logik
 
-### Die goldene Regel:
+**Was ist der Presenter?**
+Der Presenter ist das **Gehirn**:
+
+- Holt Daten vom Model
+- Bereitet Daten für die View auf
+- Reagiert auf Benutzer-Aktionen
+- Koordiniert alles
+
+**In unserem Projekt ist das `page.tsx`!**
+
+```typescript
+// ────────────────────────────────────────
+// apps/web/app/page.tsx
+// ────────────────────────────────────────
+
+export default function Home() {
+  // 📊 State: Daten speichern
+  const [contracts, setContracts] = useState<ContractDTO[]>([]);
+  const token = useAccessToken();
+```
+
+**Was passiert hier?**
+
+- `useState` → Speichert Daten im Presenter
+- `contracts` → Die Liste der Verträge
+- `token` → Authentifizierungs-Token für API-Calls
+
+---
+
+```typescript
+// 🔄 Daten beim Start laden
+useEffect(() => {
+  if (!token) return;
+
+  const fetchContracts = async () => {
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_BACKEND_URL}/contracts/me`,
+      {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    );
+
+    if (res.ok) {
+      const data = await res.json();
+      setContracts(data);
+    }
+  };
+
+  fetchContracts();
+}, [token]);
+```
+
+**Was passiert hier?**
+
+1. `useEffect` → Wird beim Start ausgeführt
+2. Prüft, ob Token vorhanden ist
+3. Ruft Backend API auf: `/contracts/me`
+4. Backend antwortet mit Liste der Verträge
+5. Speichert Verträge in `contracts` State
+
+---
+
+```typescript
+// ➕ Vertrag hinzufügen
+const addContract = async (contract: CreateContractDto) => {
+  const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/contracts`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(contract),
+  });
+
+  if (res.ok) {
+    // Liste neu laden
+    const contractsRes = await fetch(
+      `${process.env.NEXT_PUBLIC_BACKEND_URL}/contracts/me`,
+      {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    );
+
+    if (contractsRes.ok) {
+      const updatedContracts = await contractsRes.json();
+      setContracts(updatedContracts);
+    }
+  }
+};
+```
+
+**Was passiert hier?**
+
+1. Nimmt einen neuen Vertrag entgegen
+2. Schickt `POST`-Request an Backend → speichert Vertrag
+3. Wenn erfolgreich: Lädt komplette Liste neu
+4. Aktualisiert `contracts` State → View zeigt neuen Vertrag
+
+---
+
+```typescript
+// 🗑️ Vertrag löschen
+const deleteContract = async (id: string) => {
+  const originalContracts = contracts;
+
+  try {
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_BACKEND_URL}/contracts/${id}`,
+      {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    );
+
+    if (!response.ok) {
+      throw new Error('Failed to delete contract');
+    }
+
+    // Aus Liste entfernen
+    setContracts(contracts.filter((c) => c.contractId !== id));
+  } catch (err) {
+    // Bei Fehler: Zurückrollen
+    setContracts(originalContracts);
+    throw err;
+  }
+};
+```
+
+**Was passiert hier?**
+
+1. **Backup erstellen**: Speichert aktuelle Liste
+2. Backend-Call: Löscht Vertrag aus Datenbank
+3. Wenn erfolgreich: Entfernt aus Liste (filter)
+4. Bei Fehler: Stellt alte Liste wieder her (Rollback)
+
+---
+
+```typescript
+  // 📤 View-Komponenten nutzen
+  return (
+    <ProtectedComponent>
+      <div>
+        <h1>BudgetBuddy</h1>
+
+        {/* Formular-View */}
+        <ContractForm onAddContract={addContract} />
+
+        {/* Listen-View */}
+        <ContractList
+          contracts={contracts}
+          onDeleteContract={deleteContract}
+          onUpdateContract={updateContract}
+        />
+
+        {/* Chart-View */}
+        <ContractChart contracts={contracts} />
+      </div>
+    </ProtectedComponent>
+  );
+}
+```
+
+**Was passiert hier?**
+
+- Der Presenter (page.tsx) **orchestriert** alles
+- Gibt Daten (`contracts`) an Views weiter
+- Gibt Funktionen (`addContract`, `deleteContract`) an Views weiter
+- Views sind "dumm" - sie zeigen nur an und melden Klicks
+
+**Wichtig:**
+
+- ✅ Presenter HOLT Daten vom Model (Backend)
+- ✅ Presenter VERARBEITET Benutzer-Aktionen
+- ✅ Presenter GIBT aufbereitete Daten an View
+- ❌ Presenter rendert NICHT direkt HTML (nutzt View-Komponenten)
+
+---
+
+## Praktisches Beispiel aus unserem Projekt
+
+Schauen wir uns an, wie **alle drei zusammenarbeiten**, wenn ein Benutzer einen Vertrag löschen will:
+
+### Schritt 1: Die View meldet Klick
+
+```typescript
+// ────────────────────────────────────────
+// apps/web/components/ContractList.tsx
+// ────────────────────────────────────────
+
+export function ContractList({ contracts, onDeleteContract }) {
+  return (
+    <div>
+      {contracts.map(contract => (
+        <div key={contract.contractId}>
+          <h3>{contract.name}</h3>
+
+          {/* Benutzer klickt hier */}
+          <button onClick={() => onDeleteContract(contract.contractId)}>
+            Löschen
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
+**Was passiert hier?**
+
+1. View zeigt Button an
+2. Benutzer klickt auf "Löschen"
+3. Button ruft `onDeleteContract(id)` auf
+4. View weiß NICHT, was danach passiert
+
+---
+
+### Schritt 2: Der Presenter verarbeitet
+
+```typescript
+// ────────────────────────────────────────
+// apps/web/app/page.tsx
+// ────────────────────────────────────────
+
+export default function Home() {
+  const deleteContract = async (id: string) => {
+    const originalContracts = contracts;
+
+    try {
+      // 1. Backend-Call (Model)
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/contracts/${id}`,
+        { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (!response.ok) throw new Error('Failed');
+
+      // 2. UI aktualisieren
+      setContracts(contracts.filter(c => c.contractId !== id));
+    } catch (err) {
+      setContracts(originalContracts);
+    }
+  };
+
+  return (
+    <ContractList
+      contracts={contracts}
+      onDeleteContract={deleteContract}  // Funktion weitergeben
+    />
+  );
+}
+```
+
+**Was passiert hier?**
+
+1. Presenter empfängt DELETE-Aufruf
+2. Macht Backup der aktuellen Liste
+3. Fragt Backend (Model), ob Löschen OK ist
+4. Bei Erfolg: Entfernt aus Liste
+5. Bei Fehler: Macht Rollback
+
+---
+
+### Schritt 3: Das Model (Backend)
+
+```typescript
+// ────────────────────────────────────────
+// apps/backend/src/contract/contract.controller.ts
+// ────────────────────────────────────────
+
+@Controller('contracts')
+export class ContractController {
+  @UseGuards(JwtAuthGuard)
+  @Delete(':id')
+  async deleteContract(@Param('id') id: string) {
+    return this.contractService.deleteContract(id);
+  }
+}
+```
+
+**Was passiert hier?**
+
+1. Controller empfängt DELETE-Request
+2. `@UseGuards(JwtAuthGuard)` → Prüft Authentifizierung
+3. Leitet an Service weiter
+
+---
+
+```typescript
+// ────────────────────────────────────────
+// apps/backend/src/contract/contract.service.ts
+// ────────────────────────────────────────
+
+async deleteContract(contractId: string) {
+  return this.prisma.contract.delete({
+    where: { contractId }
+  });
+}
+```
+
+**Was passiert hier?**
+
+1. Service löscht aus Datenbank
+2. Gibt Erfolg/Fehler zurück
+
+---
+
+## Der Datenfluss Schritt für Schritt
+
+### Szenario: Benutzer löscht einen Vertrag
 
 ```
-MODEL   → "Was sind die Daten?"           → Backend
-VIEW    → "Wie sieht es aus?"             → React Komponenten
-PRESENTER → "Was passiert wenn...?"       → Custom Hooks
+┌─────────────────────────────────────────────────────────┐
+│ 1. BENUTZER klickt "Löschen"-Button                    │
+└────────────────────┬────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────────────────┐
+│ 2. VIEW (ContractList.tsx)                             │
+│    → Button ruft onDeleteContract(id) auf              │
+└────────────────────┬────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────────────────┐
+│ 3. PRESENTER (page.tsx)                                │
+│    → deleteContract() wird ausgeführt                  │
+│    → Backup erstellen                                  │
+│    → Backend API aufrufen                              │
+└────────────────────┬────────────────────────────────────┘
+                     │ HTTP DELETE /contracts/123
+                     │ Authorization: Bearer <token>
+                     ▼
+┌─────────────────────────────────────────────────────────┐
+│ 4. MODEL (Backend Controller)                          │
+│    → @UseGuards prüft Token                            │
+│    → Leitet an Service weiter                          │
+└────────────────────┬────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────────────────┐
+│ 5. MODEL (Backend Service)                             │
+│    → prisma.contract.delete({ where: { contractId } }) │
+│    → Datenbank: Vertrag wird gelöscht                  │
+└────────────────────┬────────────────────────────────────┘
+                     │ Response: 200 OK
+                     ▼
+┌─────────────────────────────────────────────────────────┐
+│ 6. PRESENTER (page.tsx)                                │
+│    → Response empfangen (200 OK)                       │
+│    → setContracts(contracts.filter(...))               │
+│    → State aktualisiert                                │
+└────────────────────┬────────────────────────────────────┘
+                     │ State Changed
+                     ▼
+┌─────────────────────────────────────────────────────────┐
+│ 7. VIEW (ContractList.tsx)                             │
+│    → React Re-Render                                   │
+│    → Neue contracts-Liste anzeigen                     │
+│    → Vertrag ist weg!                                  │
+└────────────────────┬────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────────────────┐
+│ 8. BENUTZER sieht: Vertrag gelöscht ✅                 │
+└─────────────────────────────────────────────────────────┘
 ```
 
-### Faustregel zum Einordnen:
+---
 
-**Frage dich bei jedem Code:**
+### Szenario: Seite wird geladen
 
-- Spreche ich mit der Datenbank? → **Model**
-- Zeige ich etwas auf dem Bildschirm? → **View**
-- Reagiere ich auf Benutzer-Aktionen? → **Presenter**
-- Bereite ich Daten auf? → **Presenter**
+```
+┌─────────────────────────────────────────────────────────┐
+│ 1. BENUTZER öffnet die Seite                           │
+└────────────────────┬────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────────────────┐
+│ 2. PRESENTER (page.tsx)                                │
+│    → useEffect wird ausgeführt                         │
+│    → Token vorhanden? Ja!                              │
+│    → fetchContracts() aufrufen                         │
+└────────────────────┬────────────────────────────────────┘
+                     │ HTTP GET /contracts/me
+                     │ Authorization: Bearer <token>
+                     ▼
+┌─────────────────────────────────────────────────────────┐
+│ 3. MODEL (Backend Controller)                          │
+│    → JwtAuthGuard extrahiert userId aus Token         │
+│    → req.user = { userId: "123", ... }                 │
+│    → Leitet an Service weiter                          │
+└────────────────────┬────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────────────────┐
+│ 4. MODEL (Backend Service)                             │
+│    → prisma.contract.findMany({ where: { userId } })  │
+│    → include: { documents: true }                      │
+│    → orderBy: { startDate: 'desc' }                    │
+└────────────────────┬────────────────────────────────────┘
+                     │ Response: [{ contractId: '1', ... }]
+                     ▼
+┌─────────────────────────────────────────────────────────┐
+│ 5. PRESENTER (page.tsx)                                │
+│    → Response empfangen                                │
+│    → setContracts(data)                                │
+│    → State aktualisiert                                │
+└────────────────────┬────────────────────────────────────┘
+                     │ State Changed
+                     ▼
+┌─────────────────────────────────────────────────────────┐
+│ 6. VIEW (ContractList.tsx + ContractChart.tsx)        │
+│    → Bekommt contracts-Array                           │
+│    → React rendert Komponenten                         │
+│    → Liste + Chart werden angezeigt                    │
+└────────────────────┬────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────────────────┐
+│ 7. BENUTZER sieht: Alle Verträge! 📋                   │
+└─────────────────────────────────────────────────────────┘
+```
 
-### Vorteile nochmal:
+---
 
-✅ **Ordnung:** Jeder Code hat seinen Platz  
-✅ **Verständlichkeit:** Leicht zu lesen  
-✅ **Testbar:** Jeder Teil isoliert testbar  
-✅ **Wartbar:** Änderungen an einem Teil betreffen andere nicht  
-✅ **Teamfähig:** Mehrere Entwickler können parallel arbeiten
+## Zusammenfassung
 
-### Merksatz:
+### Die goldene Regel
+
+```
+┌────────────────────────────────────────────────────────┐
+│                                                        │
+│  MODEL     → "Was sind die Daten?"     → Backend      │
+│  VIEW      → "Wie sieht es aus?"       → Komponenten  │
+│  PRESENTER → "Was passiert wenn...?"   → page.tsx     │
+│                                                        │
+└────────────────────────────────────────────────────────┘
+```
+
+### Unser Projekt im Überblick
+
+```
+finanzgurufuerarme/
+├── apps/backend/          ← MODEL
+│   └── src/contract/
+│       ├── contract.service.ts      (Datenbank-Logik)
+│       └── contract.controller.ts   (API-Endpunkte)
+│
+├── apps/web/
+│   ├── components/        ← VIEW
+│   │   ├── ContractForm.tsx         (UI für Formular)
+│   │   ├── ContractList.tsx         (UI für Liste)
+│   │   ├── ContractChart.tsx        (UI für Diagramm)
+│   │   └── CostSummary.tsx          (UI für Kosten)
+│   │
+│   └── app/
+│       └── page.tsx                 ← PRESENTER
+│           - fetchContracts()        (Daten laden)
+│           - addContract()           (Vertrag erstellen)
+│           - deleteContract()        (Vertrag löschen)
+│           - updateContract()        (Vertrag bearbeiten)
+│
+└── packages/shared-types/ ← MODEL (Datenstrukturen)
+    └── src/contract.ts              (TypeScript-Typen)
+```
+
+### Faustregel zum Einordnen
+
+| Frage                              | Antwort | Kategorie     |
+| ---------------------------------- | ------- | ------------- |
+| Spreche ich mit der Datenbank?     | Ja →    | **Model**     |
+| Zeige ich Buttons/Farben/Layout?   | Ja →    | **View**      |
+| Verarbeite ich Klicks/Laden/Logik? | Ja →    | **Presenter** |
+
+### Vorteile
+
+✅ **Ordnung:** Backend/Frontend klar getrennt  
+✅ **Wiederverwendbar:** View-Komponenten an mehreren Stellen nutzbar  
+✅ **Wartbar:** Änderungen am UI beeinflussen Backend nicht  
+✅ **Testbar:** Jeder Teil kann separat getestet werden  
+✅ **Verständlich:** Klare Struktur, leicht zu verstehen
+
+### Merksatz
 
 > **"Das Model weiß, die View zeigt, der Presenter denkt"**
 
-Das MVP-Pattern hilft uns, sauberen, wartbaren Code zu schreiben, den auch andere (und unser zukünftiges Ich!) leicht verstehen können.
+---
+
+**Fertig!** Du verstehst jetzt MVP! 🎉

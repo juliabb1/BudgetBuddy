@@ -1,5 +1,4 @@
 'use client';
-import { ContractDTO, CreateContractDto } from '@repo/shared-types/contract';
 import { ContractChart } from '@web/components/ContractChart';
 import { ContractForm } from '@web/components/ContractForm';
 import { ContractList } from '@web/components/ContractList';
@@ -10,6 +9,7 @@ import {
   TabsList,
   TabsTrigger,
 } from '@web/components/ui/tabs';
+import { useContracts } from '@web/hooks/useContracts';
 import {
   ProtectedComponent,
   useAccessToken,
@@ -18,170 +18,23 @@ import {
 import { LogOut } from 'lucide-react';
 import { signOut } from 'next-auth/react';
 import Image from 'next/image';
-import { useEffect, useState } from 'react';
 import { Button } from '../components/ui/button';
 
 export default function Home() {
-  const [contracts, setContracts] = useState<ContractDTO[]>([]);
+  // Authentication
   const token = useAccessToken();
   const currentUser = useCurrentUser();
 
-  useEffect(() => {
-    if (!token) return; // Wait until token is available
+  // Presenter: All business logic in custom hook
+  const {
+    contracts,
+    setContracts,
+    addContract,
+    deleteContract,
+    updateContract,
+  } = useContracts(token);
 
-    const fetchContracts = async () => {
-      try {
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/contracts/me`,
-          {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`,
-            },
-          },
-        );
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(body.message || 'Fehler beim Laden der Verträge');
-        }
-        const data = await res.json();
-        setContracts(data);
-      } catch (err) {
-        const error = err as { message?: string };
-        console.log(error.message ?? 'Unbekannter Fehler');
-      }
-    };
-
-    fetchContracts();
-  }, [token]);
-
-  const addContract = async (contract: CreateContractDto) => {
-    console.log('Creating contract:', contract);
-
-    try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/contracts`,
-        {
-          method: 'POST',
-          credentials: 'include', // REQUIRED
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            name: contract.name,
-            price: contract.price,
-            cycle: contract.cycle,
-            startDate: contract.startDate,
-            debitDayOfMonth: contract.debitDayOfMonth,
-            category: contract.category,
-            isActive: contract.isActive,
-          }),
-        },
-      );
-
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.message || 'Fehler beim Erstellen des Vertrags');
-      }
-
-      const createdContract = await res.json();
-      console.log('Contract created:', createdContract);
-
-      // Refresh contracts from backend via API route
-      const contractsRes = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/contracts/me`,
-        {
-          method: 'GET',
-          credentials: 'include', // REQUIRED
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-        },
-      );
-
-      if (contractsRes.ok) {
-        const updatedContracts = await contractsRes.json();
-        setContracts(updatedContracts);
-      }
-      // Contract creation successful, contracts refreshed
-    } catch (err) {
-      const error = err as { message?: string };
-      console.log(error.message ?? 'Unbekannter Fehler');
-    }
-  };
-
-  const deleteContract = async (id: string) => {
-    // Store original contracts for potential rollback
-    const originalContracts = contracts;
-    console.log('contractId to delete:', id);
-    try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/contracts/${id}`,
-        {
-          method: 'DELETE',
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to delete contract');
-      }
-      setContracts(contracts.filter((contract) => contract.contractId !== id));
-    } catch (err) {
-      const error = err as { message?: string };
-      setContracts(originalContracts);
-      throw new Error(error.message || 'Failed to delete contract');
-    }
-  };
-
-  const updateContract = async (
-    id: string,
-    updatedContract: Partial<
-      Omit<ContractDTO, 'contractId' | 'userId' | 'documents'>
-    >,
-  ) => {
-    // Store original contracts for potential rollback
-    const originalContracts = contracts;
-    try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/contracts/${id}`,
-        {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(updatedContract),
-        },
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to update contract');
-      }
-
-      const data = await response.json();
-      // Update with server response to ensure consistency
-      // Merge with existing contract data to preserve all fields
-      setContracts(
-        contracts.map((contract) =>
-          contract.contractId === id ? { ...contract, ...data } : contract,
-        ),
-      );
-    } catch (err) {
-      const error = err as { message?: string };
-      // Revert UI on error
-      setContracts(originalContracts);
-      throw new Error(error.message || 'Failed to update contract');
-    }
-  };
-
+  // VIEW: Pure UI rendering below
   return (
     <ProtectedComponent>
       <div className="min-h-screen bg-linear-to-br from-emerald-50 via-green-50 to-teal-50 p-4 md:p-8">

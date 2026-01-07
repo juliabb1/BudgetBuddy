@@ -1,691 +1,607 @@
-# Authentifizierung - Einfach erklärt
+# Authentifizierung - Schritt für Schritt erklärt
 
 ## 📚 Inhaltsverzeichnis
 
 1. [Was ist Authentifizierung?](#was-ist-authentifizierung)
-2. [Wie funktioniert das System?](#wie-funktioniert-das-system)
-3. [Schritt für Schritt: Registrierung](#schritt-für-schritt-registrierung)
-4. [Schritt für Schritt: Login](#schritt-für-schritt-login)
-5. [Geschützte Bereiche](#geschützte-bereiche)
-6. [Sicherheit verstehen](#sicherheit-verstehen)
+2. [Wie funktioniert unsere Authentifizierung?](#wie-funktioniert-unsere-authentifizierung)
+3. [Schritt 1: Registrierung](#schritt-1-registrierung)
+4. [Schritt 2: Login](#schritt-2-login)
+5. [Schritt 3: Geschützte Routen](#schritt-3-geschützte-routen)
+6. [Sicherheit: Warum bcrypt?](#sicherheit-warum-bcrypt)
+7. [Zusammenfassung](#zusammenfassung)
 
 ---
 
 ## Was ist Authentifizierung?
 
-**Authentifizierung** bedeutet: **"Bist du wirklich, wer du sagst, dass du bist?"**
+### Die Idee
 
-### Ein alltägliches Beispiel:
+**Authentifizierung** bedeutet: **"Beweisen, wer du bist"**
 
-Stell dir vor, du willst in dein Haus:
+Stell dir ein Haus vor:
 
-1. Du zeigst deinen **Schlüssel** (= Passwort)
-2. Das Schloss prüft: **"Passt der Schlüssel?"**
-3. Wenn ja: Tür geht auf (= du bist eingeloggt)
-4. Du bekommst einen **Hausausweis** (= Token), den du danach nutzen kannst
+- 🏠 **Das Haus** = Unsere App
+- 🔑 **Der Schlüssel** = Dein Passwort
+- 🆔 **Der Personalausweis** = Dein JWT-Token
+- 🚪 **Die Tür** = Login
 
-### In unserer App:
+**Ablauf:**
+
+1. Du zeigst deinen Schlüssel (Passwort)
+2. Wenn richtig → bekommst du einen Ausweis (Token)
+3. Mit dem Ausweis kommst du ins Haus rein (geschützte Routen)
+
+### Warum brauchen wir das?
+
+Ohne Authentifizierung könnte **jeder**:
+
+- Deine Verträge sehen
+- Deine Daten ändern
+- Sich als du ausgeben
+
+**Mit Authentifizierung:**
+
+- ✅ Nur du siehst deine Daten
+- ✅ Niemand kann sich als du ausgeben
+- ✅ Dein Passwort ist sicher gespeichert
+
+---
+
+## Wie funktioniert unsere Authentifizierung?
+
+### Übersicht
 
 ```
-Registrierung → Du bekommst einen Account
-Login         → Du beweist, dass du es bist
-Token         → Dein "Ausweis" für weitere Aktionen
-Logout        → Du gibst den Ausweis zurück
+┌────────────────────────────────────────────────────────┐
+│                  Unser System                          │
+└────────────────────────────────────────────────────────┘
+
+🔐 bcrypt        → Passwörter verschlüsseln
+🎫 JWT           → Token erstellen
+🔒 NextAuth.js   → Session verwalten
+🛡️ Guards        → Routen schützen
+```
+
+### Die drei Schritte
+
+```
+1️⃣ REGISTRIERUNG
+   → User erstellt Account
+   → Passwort wird verschlüsselt (bcrypt)
+   → User wird in Datenbank gespeichert
+
+2️⃣ LOGIN
+   → User gibt Email + Passwort ein
+   → Backend prüft Passwort (bcrypt.compare)
+   → Wenn richtig: JWT-Token wird erstellt
+
+3️⃣ GESCHÜTZTE ROUTEN
+   → User sendet Token mit jedem Request
+   → Backend prüft Token (JwtAuthGuard)
+   → Wenn gültig: Zugriff erlaubt
 ```
 
 ---
 
-## Wie funktioniert das System?
+## Schritt 1: Registrierung
 
-Unsere App nutzt **JWT** (JSON Web Token) - das ist wie ein digitaler Ausweis.
-
-### Die Komponenten:
+### Der Ablauf
 
 ```
-┌─────────────────┐
-│   FRONTEND      │  Next.js + NextAuth
-│   (Browser)     │  → Wo der Benutzer ist
-└────────┬────────┘
-         │ HTTPS
-         │ (verschlüsselt)
-         ▼
-┌─────────────────┐
-│   BACKEND       │  NestJS + JWT
-│   (Server)      │  → Wo die Überprüfung passiert
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│   DATENBANK     │  PostgreSQL
-│                 │  → Wo User gespeichert sind
-└─────────────────┘
+BENUTZER              FRONTEND              BACKEND              DATENBANK
+   │                     │                     │                     │
+   │  Formular          │                     │                     │
+   │ ausfüllen          │                     │                     │
+   │─────────────────→  │                     │                     │
+   │                     │  POST /user        │                     │
+   │                     │  { name, email,    │                     │
+   │                     │    password }      │                     │
+   │                     │───────────────────→│                     │
+   │                     │                     │  Passwort          │
+   │                     │                     │  verschlüsseln     │
+   │                     │                     │  (bcrypt.hash)     │
+   │                     │                     │                     │
+   │                     │                     │  User speichern    │
+   │                     │                     │────────────────────→│
+   │                     │                     │                     │
+   │                     │  { success }       │                     │
+   │                     │←───────────────────│                     │
+   │  "Erfolgreich      │                     │                     │
+   │  registriert!"     │                     │                     │
+   │←─────────────────  │                     │                     │
 ```
 
-### Wichtige Technologien:
-
-| Was             | Wofür                    | Wo       |
-| --------------- | ------------------------ | -------- |
-| **NextAuth.js** | Login-System verwalten   | Frontend |
-| **JWT Token**   | Digitaler Ausweis        | Beide    |
-| **bcrypt**      | Passwörter verschlüsseln | Backend  |
-| **Passport**    | Ausweise überprüfen      | Backend  |
-
----
-
-## Schritt für Schritt: Registrierung
-
-### Was passiert, wenn du dich registrierst?
-
-```
-Du gibst ein:
-  - Email: max@example.com
-  - Passwort: MeinGeheimesPasswort123
-  - Name: Max Mustermann
-
-Dann passiert folgendes...
-```
-
-### Schritt 1: Frontend sammelt Daten
+### Code: Frontend
 
 ```typescript
+// ────────────────────────────────────────
 // apps/web/app/register/page.tsx
-export default function RegisterPage() {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const router = useRouter();
+// ────────────────────────────────────────
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+async function handleRegister(name: string, email: string, password: string) {
+  // Passwort verschlüsseln (bcrypt)
+  const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Validierung
-    if (password.length < 6) {
-      setError('Passwort muss mindestens 6 Zeichen lang sein.');
-      return;
-    }
-
-    // Daten ans Backend senden
-    const res = await fetch('/api/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, password })
-    });
-
-    if (res.ok) {
-      router.push('/login');
-    }
-  };
-
-  return (
-    <form onSubmit={handleSubmit}>
-      <Input value={name} onChange={(e) => setName(e.target.value)} />
-      <Input value={email} onChange={(e) => setEmail(e.target.value)} />
-      <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
-      <Button type="submit">Registrieren</Button>
-    </form>
-  );
-}
-```
-
-**Was passiert hier?**
-
-- Benutzer tippt Name, Email und Passwort ein
-- Beim Klick auf "Registrieren" werden die Daten validiert
-- Die Daten werden ans Backend geschickt
-
----
-
-### Schritt 2: Backend prüft und verschlüsselt
-
-```typescript
-// Backend Controller
-@Post('/signup')
-async registrieren(@Body() daten) {
-
-  // 1. Gibt es den User schon?
-  const existiert = await this.userService.findeUser(daten.email);
-
-  if (existiert) {
-    throw new Error('Email bereits vergeben!');
-  }
-
-  // 2. Passwort verschlüsseln (hashen)
-  const verschluesselt = await bcrypt.hash(daten.passwort, 10);
-  //    "MeinPasswort123" → "$2a$10$N9qo8uLO..."
-
-  // 3. User in Datenbank speichern
-  const neuerUser = await this.userService.erstellen({
-    email: daten.email,
-    name: daten.name,
-    passwort: verschluesselt  // NUR verschlüsselt!
+  // An Backend senden
+  const res = await fetch('/api/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name,
+      email,
+      passwordHash: hashedPassword,
+    }),
   });
 
-  // 4. Token erstellen
-  const token = this.authService.erstelleToken(neuerUser);
-
-  // 5. Zurück ans Frontend
-  return {
-    access_token: token,
-    user: { id: neuerUser.id, email: neuerUser.email }
-  };
+  if (res.ok) {
+    alert('Registrierung erfolgreich!');
+  }
 }
 ```
 
 **Was passiert hier?**
 
-1. **Prüfen:** Gibt es die Email schon?
-2. **Verschlüsseln:** Passwort wird "gehashed" (nicht mehr lesbar)
-3. **Speichern:** User wird in Datenbank gespeichert (nur mit verschlüsseltem Passwort!)
-4. **Token erstellen:** Digitaler Ausweis wird ausgestellt
-5. **Zurückschicken:** Frontend bekommt Token
+1. User gibt Name, Email + Passwort ein
+2. **WICHTIG**: Passwort wird bereits im **Frontend** verschlüsselt
+3. Frontend schickt `POST`-Request an `/api/register`
+4. Der **Hash** wird gesendet (nicht das Klartext-Passwort!)
 
 ---
 
-### Schritt 3: Passwort-Verschlüsselung (bcrypt)
-
-**Warum verschlüsseln wir?**
-
-Stell dir vor, jemand hackt unsere Datenbank. Ohne Verschlüsselung könnte er alle Passwörter lesen!
-
-```
-❌ OHNE Verschlüsselung:
-Datenbank speichert: "MeinPasswort123"
-Hacker sieht: "MeinPasswort123"
-→ GEFÄHRLICH!
-
-✅ MIT Verschlüsselung (bcrypt):
-Eingabe: "MeinPasswort123"
-Datenbank speichert: "$2a$10$N9qo8uLOv..."
-Hacker sieht: "$2a$10$N9qo8uLOv..."
-→ Kann nichts damit anfangen!
-```
-
-**Code-Beispiel:**
+### Code: Backend - Controller
 
 ```typescript
-// Passwort verschlüsseln
-const klartext = 'MeinPasswort123';
-const verschluesselt = await bcrypt.hash(klartext, 10);
+// ────────────────────────────────────────
+// apps/backend/src/user/user.controller.ts
+// ────────────────────────────────────────
 
-console.log(verschluesselt);
-// Ausgabe: "$2a$10$N9qo8uLOv.KvfH3mhZvxDe..."
-// → Nicht mehr rückwärts zu entschlüsseln!
+@Controller('user')
+export class UserController {
+  @Post()
+  async createUser(@Body() user: CreateUserInput) {
+    try {
+      return await this.userService.createUser({
+        name: user.name,
+        email: user.email,
+        passwordHash: user.passwordHash, // Schon gehashed!
+      });
+    } catch (error: any) {
+      if (error.code === 'P2002') {
+        // Email existiert bereits
+        throw new HttpException('User mit dieser Mail existiert bereits.', 400);
+      }
+      throw error;
+    }
+  }
+}
 ```
+
+**Was passiert hier?**
+
+1. Controller empfängt Request
+2. `@Body()` extrahiert `{ name, email, passwordHash }` aus Request
+3. **Wichtig**: `passwordHash` ist bereits verschlüsselt!
+4. Leitet an `userService.createUser()` weiter
+5. Bei Fehler `P2002` (Unique Constraint) → Email existiert schon
+
+---
+
+### Code: Backend - Service
+
+```typescript
+// ────────────────────────────────────────
+// apps/backend/src/user/user.service.ts
+// ────────────────────────────────────────
+
+@Injectable()
+export class UserService {
+  constructor(private prisma: PrismaService) {}
+
+  async createUser(data: {
+    name: string;
+    email: string;
+    passwordHash: string;
+  }) {
+    return this.prisma.user.create({
+      data: {
+        name: data.name,
+        email: data.email,
+        passwordHash: data.passwordHash,
+      },
+    });
+  }
+}
+```
+
+**Was passiert hier?**
+
+1. Service speichert User in Datenbank
+2. `passwordHash` wird direkt gespeichert (ist schon verschlüsselt)
+3. Original-Passwort wird **niemals** gespeichert
+
+---
+
+### Was ist bcrypt.hash()?
+
+```typescript
+bcrypt.hash(password, saltRounds);
+```
+
+**Parameter:**
+
+- `password` → Das Passwort im Klartext
+- `saltRounds` → Wie oft verschlüsselt wird (10 = sehr sicher)
+
+**Beispiel:**
+
+```typescript
+const password = 'MeinPasswort123';
+const hash = await bcrypt.hash(password, 10);
+
+console.log(password);
+// → "MeinPasswort123"
+
+console.log(hash);
+// → "$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy"
+```
+
+**Was macht bcrypt?**
+
+1. Nimmt dein Passwort
+2. Fügt "Salz" hinzu (Zufallsdaten)
+3. Verschlüsselt es 2^10 = 1024 Mal
+4. Gibt einen Hash zurück
 
 **Wichtig:**
 
-- Verschlüsselung ist **Einweg** (nicht umkehrbar)
-- Jedes Mal ein anderer Hash, selbst bei gleichem Passwort
-- Wir können nur **vergleichen**, nicht entschlüsseln
-
----
-
-### Schritt 4: JWT Token erstellen
-
-**Was ist ein JWT Token?**
-
-Ein Token ist wie ein Ausweis mit drei Teilen:
-
-```
-Header.Payload.Signatur
-```
-
-**Code-Beispiel:**
+- Gleicher Input → **unterschiedliche Hashes** (wegen Salz)
+- Hash → **nicht umkehrbar** (kann nicht entschlüsselt werden)
 
 ```typescript
-// Token erstellen
-async erstelleToken(user) {
-  // Informationen, die im Token stehen
-  const payload = {
-    sub: user.id,        // User-ID
-    email: user.email,   // Email
-    name: user.name      // Name
-  };
-
-  // Token signieren (unterschreiben)
-  const token = this.jwtService.sign(payload);
-
-  return token;
-  // Ergebnis: "eyJhbGciOiJIUzI1NiIsInR5cCI6..."
-}
-```
-
-**Was steht im Token?**
-
-```typescript
-// Wenn wir den Token dekodieren:
-{
-  sub: "user-123",              // User ID
-  email: "max@example.com",     // Email
-  name: "Max Mustermann",       // Name
-  iat: 1704297600,              // Erstellt am (Timestamp)
-  exp: 1704384000               // Läuft ab am (Timestamp)
-}
-```
-
-**Token ist signiert:**
-
-- Niemand kann ihn fälschen
-- Server kann prüfen: "Ist der Token echt?"
-- Wie eine Unterschrift auf einem Dokument
-
----
-
-## Schritt für Schritt: Login
-
-### Was passiert beim Login?
-
-```
-Du gibst ein:
-  - Email: max@example.com
-  - Passwort: MeinGeheimesPasswort123
-
-Das System prüft:
-  - Gibt es diese Email?
-  - Ist das Passwort richtig?
-
-Wenn ja:
-  - Du bekommst einen Token (Ausweis)
-  - Du bist eingeloggt!
-```
-
-### Schritt 1: Frontend sendet Daten
-
-```typescript
-// apps/web/app/login/page.tsx
-export default function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const router = useRouter();
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-
-    // NextAuth macht hier die Arbeit für uns
-    const res = await signIn('credentials', {
-      redirect: false,
-      email,
-      password
-    });
-
-    if (res?.error) {
-      setError('Ungültige Anmeldedaten');
-    } else {
-      router.push('/'); // Zur Startseite
-    }
-  };
-
-  return (
-    <form onSubmit={handleSubmit}>
-      <Label>E-Mail</Label>
-      <Input
-        type="email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-      />
-
-      <Label>Passwort</Label>
-      <Input
-        type="password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-      />
-
-      <Button type="submit">Anmelden</Button>
-    </form>
-  );
-}
+// Gleiche Passwörter → unterschiedliche Hashes!
+bcrypt.hash("test", 10) → "$2b$10$abc..."
+bcrypt.hash("test", 10) → "$2b$10$xyz..."
 ```
 
 ---
 
-### Schritt 2: Backend prüft Passwort
+## Schritt 2: Login
+
+### Der Ablauf
+
+```
+BENUTZER              FRONTEND              BACKEND              DATENBANK
+   │                     │                     │                     │
+   │  Login-Formular    │                     │                     │
+   │─────────────────→  │                     │                     │
+   │                     │  POST /user/login  │                     │
+   │                     │  { email, pw }     │                     │
+   │                     │───────────────────→│                     │
+   │                     │                     │  User suchen       │
+   │                     │                     │────────────────────→│
+   │                     │                     │  { email, hash }   │
+   │                     │                     │←────────────────────│
+   │                     │                     │                     │
+   │                     │                     │  Passwort prüfen   │
+   │                     │                     │  bcrypt.compare()  │
+   │                     │                     │                     │
+   │                     │                     │  JWT erstellen     │
+   │                     │                     │                     │
+   │                     │  { access_token,   │                     │
+   │                     │    user }          │                     │
+   │                     │←───────────────────│                     │
+   │  ✅ Eingeloggt!    │                     │                     │
+   │←─────────────────  │                     │                     │
+```
+
+### Code: Backend - Login Controller
 
 ```typescript
-// Backend Login
-@Post('/login')
-async login(@Body() daten) {
+// ────────────────────────────────────────
+// apps/backend/src/user/user.controller.ts
+// ────────────────────────────────────────
+
+@Post('login')
+async login(@Body() loginData: LoginInput) {
+  const { email, password } = loginData;
 
   // 1. User aus Datenbank holen
-  const user = await this.userService.findeUserMitEmail(daten.email);
+  const user = await this.userService.getUser({ email });
 
   if (!user) {
-    throw new Error('Email nicht gefunden!');
+    throw new HttpException('Invalid credentials', 401);
   }
 
   // 2. Passwort vergleichen
-  const passwortKorrekt = await bcrypt.compare(
-    daten.passwort,      // Was der User eingegeben hat
-    user.passwort        // Was in der DB steht (verschlüsselt)
-  );
+  const isValid = await bcrypt.compare(password, user.passwordHash);
 
-  if (!passwortKorrekt) {
-    throw new Error('Falsches Passwort!');
+  if (!isValid) {
+    throw new HttpException('Invalid credentials', 401);
   }
 
-  // 3. Token erstellen
-  const token = this.authService.erstelleToken(user);
+  // 3. JWT-Token erstellen
+  return this.authService.login(user);
+}
+```
 
-  // 4. Token zurückgeben
-  return {
-    access_token: token,
-    user: {
-      id: user.id,
+**Was passiert hier?**
+
+**Schritt 1:** User aus Datenbank holen
+
+- Sucht User anhand Email
+- Wenn nicht gefunden → Fehler 401 (Unauthorized)
+
+**Schritt 2:** Passwort vergleichen
+
+```typescript
+bcrypt.compare(eingabe, hash);
+```
+
+- `eingabe` = Was der User eingibt (`"MeinPasswort123"`)
+- `hash` = Was in der DB steht (`"$2b$10$N9q..."`)
+- bcrypt verschlüsselt die Eingabe und vergleicht
+- Gibt `true` oder `false` zurück
+
+**Schritt 3:** JWT-Token erstellen
+
+- Leitet an `authService.login()` weiter
+
+---
+
+### Code: Backend - Auth Service
+
+```typescript
+// ────────────────────────────────────────
+// apps/backend/src/auth/auth.service.ts
+// ────────────────────────────────────────
+
+@Injectable()
+export class AuthService {
+  constructor(private jwtService: JwtService) {}
+
+  async login(user: User) {
+    // Payload: Daten, die im Token gespeichert werden
+    const payload = {
       email: user.email,
-      name: user.name
-    }
-  };
-}
-```
+      sub: user.userId, // "sub" = User-ID (JWT-Standard)
+      name: user.name,
+    };
 
-**Was passiert hier?**
+    // JWT-Token erstellen
+    const access_token = this.jwtService.sign(payload);
 
-1. **Suchen:** Gibt es einen User mit dieser Email?
-2. **Vergleichen:** Stimmt das Passwort?
-3. **Token:** Wenn alles passt, Token erstellen
-4. **Zurück:** Frontend bekommt den Token
-
----
-
-### Schritt 3: Passwort-Vergleich mit bcrypt
-
-**Wie vergleicht bcrypt?**
-
-```typescript
-// Was der User eingibt
-const eingabe = 'MeinPasswort123';
-
-// Was in der Datenbank steht (von Registrierung)
-const gespeichert = '$2a$10$N9qo8uLOv...';
-
-// Bcrypt vergleicht
-const istKorrekt = await bcrypt.compare(eingabe, gespeichert);
-
-if (istKorrekt) {
-  console.log('Passwort stimmt! ✅');
-} else {
-  console.log('Passwort falsch! ❌');
-}
-```
-
-**Warum im Backend?**
-
-```
-❌ FALSCH (im Frontend):
-  → Hacker könnte Code manipulieren
-  → Unsicher!
-
-✅ RICHTIG (im Backend):
-  → Server hat volle Kontrolle
-  → Hacker kann nichts manipulieren
-  → Sicher!
-```
-
-**Der sichere Weg:**
-
-```
-Frontend  → Sendet: "MeinPasswort123" (über HTTPS verschlüsselt)
-            ↓
-Backend   → Vergleicht mit gespeichertem Hash
-            ↓
-Backend   → Entscheidet: Richtig oder Falsch
-            ↓
-Frontend  → Bekommt nur Ergebnis: ✅ oder ❌
-```
-
----
-
-### Schritt 4: NextAuth speichert Session
-
-```typescript
-// NextAuth Konfiguration
-export const authOptions = {
-  providers: [
-    CredentialsProvider({
-      async authorize(credentials) {
-        // Backend fragen
-        const antwort = await fetch('/backend/login', {
-          method: 'POST',
-          body: JSON.stringify({
-            email: credentials.email,
-            passwort: credentials.passwort,
-          }),
-        });
-
-        if (!antwort.ok) {
-          return null; // Login fehlgeschlagen
-        }
-
-        const daten = await antwort.json();
-
-        // User-Objekt zurückgeben
-        return {
-          id: daten.user.id,
-          email: daten.user.email,
-          accessToken: daten.access_token, // Token speichern!
-        };
+    return {
+      access_token,
+      user: {
+        id: user.userId,
+        email: user.email,
+        name: user.name,
       },
-    }),
-  ],
-
-  // Session-Einstellungen
-  session: {
-    strategy: 'jwt', // Token-basiert
-    maxAge: 24 * 60 * 60, // 1 Tag gültig
-  },
-
-  callbacks: {
-    // Token in Session speichern
-    async jwt({ token, user }) {
-      if (user) {
-        token.accessToken = user.accessToken;
-      }
-      return token;
-    },
-
-    // Token für Frontend verfügbar machen
-    async session({ session, token }) {
-      session.accessToken = token.accessToken;
-      return session;
-    },
-  },
-};
+    };
+  }
+}
 ```
 
 **Was passiert hier?**
 
-- NextAuth ruft unser Backend auf
-- Wenn Login erfolgreich, speichert es den Token
-- Token wird in einem Cookie gespeichert
-- Bei jedem Request verfügbar
+1. Erstellt ein `payload`-Objekt mit User-Daten
+2. `jwtService.sign()` erstellt den JWT-Token
+3. Gibt Token + User-Daten zurück
 
 ---
 
-## Geschützte Bereiche
-
-### Wie schützen wir Seiten?
-
-Manche Seiten sollen nur für eingeloggte Benutzer sichtbar sein.
-
-### Frontend: Seite schützen
+### Was ist bcrypt.compare()?
 
 ```typescript
-// Geschützte Seite
-function MeineVertraege() {
-  const { data: session, status } = useSession();
+bcrypt.compare(plaintext, hash);
+```
 
-  // Noch am Laden?
-  if (status === 'loading') {
-    return <div>Lädt...</div>;
-  }
+**Wie funktioniert das?**
 
-  // Nicht eingeloggt?
-  if (!session) {
-    return <div>Bitte erst einloggen!</div>;
-  }
+```typescript
+// Beim Registrieren:
+const hash = await bcrypt.hash('MeinPasswort123', 10);
+// → "$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy"
 
-  // Eingeloggt - Seite zeigen
-  return (
-    <div>
-      <h1>Willkommen, {session.user.name}!</h1>
-      <VertragsListe />
-    </div>
-  );
+// Beim Login:
+const isValid = await bcrypt.compare('MeinPasswort123', hash);
+// → true ✅
+
+const isValid2 = await bcrypt.compare('FalschesPasswort', hash);
+// → false ❌
+```
+
+**Warum ist das sicher?**
+
+1. bcrypt nimmt das eingegebene Passwort
+2. Verschlüsselt es **genauso** wie beim Registrieren
+3. Vergleicht die beiden Hashes
+4. Original-Passwort wird **nie** entschlüsselt!
+
+---
+
+### Was ist ein JWT-Token?
+
+**JWT** = JSON Web Token
+
+**Aufbau:**
+
+```
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InVzZXJAbWFpbC5jb20iLCJzdWIiOiIxMjMiLCJuYW1lIjoiSm9obiIsImlhdCI6MTY5NDU1MDAwMH0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
+
+│────────── Header ──────────│────────── Payload ──────────│────────── Signature ──────────│
+```
+
+**Drei Teile (getrennt durch `.`):**
+
+1. **Header**
+
+```json
+{
+  "alg": "HS256",
+  "typ": "JWT"
 }
 ```
 
-**Noch einfacher mit Komponente:**
+2. **Payload** (Daten)
+
+```json
+{
+  "email": "user@mail.com",
+  "sub": "123",
+  "name": "John",
+  "iat": 1694550000
+}
+```
+
+3. **Signature** (Signatur)
+
+- Verhindert Manipulation
+- Kann nur mit Secret-Key erstellt werden
+
+---
+
+### Code: Frontend - Token speichern
 
 ```typescript
-// ProtectedComponent Wrapper
-function MeineVertraege() {
-  return (
-    <ProtectedComponent>
-      <h1>Meine Verträge</h1>
-      <VertragsListe />
-    </ProtectedComponent>
-  );
+// ────────────────────────────────────────
+// apps/web/lib/auth.tsx
+// ────────────────────────────────────────
+
+export function useAccessToken() {
+  const session = useSession();
+
+  // Token aus Session holen
+  return session?.data?.user?.accessToken;
 }
+```
 
-// ProtectedComponent Definition
-function ProtectedComponent({ children }) {
-  const { data: session } = useSession();
-  const router = useRouter();
+**Was passiert hier?**
 
-  // Nicht eingeloggt? → Zur Login-Seite
+1. NextAuth.js speichert Session (im Cookie)
+2. Session enthält den Token
+3. Hook gibt Token zurück
+
+---
+
+## Schritt 3: Geschützte Routen
+
+### Der Ablauf
+
+```
+FRONTEND                         BACKEND                    DATENBANK
+   │                                │                           │
+   │  GET /contracts/me             │                           │
+   │  Authorization: Bearer <token> │                           │
+   │───────────────────────────────→│                           │
+   │                                │  Token prüfen             │
+   │                                │  (JwtAuthGuard)           │
+   │                                │  JwtStrategy.validate()   │
+   │                                │                           │
+   │                                │  User-ID aus Token        │
+   │                                │  extrahieren              │
+   │                                │  req.user = { userId }    │
+   │                                │                           │
+   │                                │  Verträge laden           │
+   │                                │  WHERE userId = <id>      │
+   │                                │──────────────────────────→│
+   │                                │  [contracts]              │
+   │                                │←──────────────────────────│
+   │  [contracts]                   │                           │
+   │←───────────────────────────────│                           │
+```
+
+### Code: Frontend - Request mit Token
+
+```typescript
+// ────────────────────────────────────────
+// apps/web/app/page.tsx
+// ────────────────────────────────────────
+
+export default function Home() {
+  const token = useAccessToken();
+
   useEffect(() => {
-    if (!session) {
-      router.push('/login');
-    }
-  }, [session]);
+    const fetchContracts = async () => {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/contracts/me`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`, // Token mitschicken!
+          },
+        },
+      );
 
-  if (!session) {
-    return <div>Lädt...</div>;
+      if (res.ok) {
+        const data = await res.json();
+        setContracts(data);
+      }
+    };
+
+    fetchContracts();
+  }, [token]);
+}
+```
+
+**Was passiert hier?**
+
+1. Request an Backend
+2. **Header** enthält Token: `Authorization: Bearer <token>`
+3. Backend prüft Token mit `JwtAuthGuard`
+
+---
+
+### Code: Backend - Route schützen
+
+```typescript
+// ────────────────────────────────────────
+// apps/backend/src/contract/contract.controller.ts
+// ────────────────────────────────────────
+
+@Controller('contracts')
+export class ContractController {
+  @UseGuards(JwtAuthGuard) // 🛡️ Nur eingeloggte User!
+  @Get('me')
+  async getMyContracts(@Request() req) {
+    // req.user wurde vom Guard gesetzt
+    const userId = req.user.userId;
+
+    return this.contractService.getContractsByUserId(userId);
   }
-
-  return <>{children}</>;
 }
 ```
+
+**Was passiert hier?**
+
+1. `@UseGuards(JwtAuthGuard)` → Prüft Token
+2. Wenn Token gültig → User-Daten in `req.user` gesetzt
+3. Controller kann `req.user.userId` nutzen
 
 ---
 
-### Backend: API schützen
-
-**Ohne Schutz (unsicher):**
+### Code: JWT Strategy (Token prüfen)
 
 ```typescript
-@Get('/vertraege')
-async alleVertraege() {
-  // PROBLEM: Jeder kann diese Route aufrufen!
-  return this.service.alle();
-}
-```
+// ────────────────────────────────────────
+// apps/backend/src/auth/jwt.strategy.ts
+// ────────────────────────────────────────
 
-**Mit Schutz (sicher):**
-
-```typescript
-@UseGuards(JwtAuthGuard)  // ← Schutz aktivieren
-@Get('/vertraege')
-async alleVertraege(@Req() request) {
-  // Nur erreichbar mit gültigem Token!
-
-  // User-Info aus Token extrahieren
-  const userId = request.user.id;
-
-  // Nur Verträge dieses Users holen
-  return this.service.alleVon(userId);
-}
-```
-
-**Was macht `@UseGuards(JwtAuthGuard)`?**
-
-```
-1. Request kommt an
-   ↓
-2. Guard prüft: Ist ein Token im Header?
-   ↓
-3. Guard prüft: Ist der Token gültig?
-   ↓
-4. Guard extrahiert User-Info aus Token
-   ↓
-5. Guard setzt request.user
-   ↓
-6. Controller-Methode wird ausgeführt
-
-Falls Token fehlt oder ungültig:
-→ Fehler 401 (Unauthorized)
-→ Controller wird NICHT ausgeführt
-```
-
----
-
-### API-Request mit Token
-
-**Wie sendet das Frontend den Token?**
-
-```typescript
-// Token aus Session holen
-function useVertraege() {
-  const { data: session } = useSession();
-  const token = session?.accessToken;
-
-  const laden = async () => {
-    // Token im Authorization Header senden
-    const antwort = await fetch('/api/vertraege', {
-      headers: {
-        Authorization: `Bearer ${token}`, // ← Hier ist der Token!
-      },
-    });
-
-    const vertraege = await antwort.json();
-    return vertraege;
-  };
-
-  return { laden };
-}
-```
-
-**Format des Headers:**
-
-```
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6...
-               ↑      ↑
-               |      └─ Der Token
-               └─ "Bearer" = Standard-Präfix
-```
-
----
-
-### JWT Strategy (Backend)
-
-**Wie prüft das Backend den Token?**
-
-```typescript
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(private configService: ConfigService) {
     super({
-      // Wo finde ich den Token?
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-
-      // Ist ein abgelaufener Token okay? Nein!
       ignoreExpiration: false,
-
-      // Geheimer Schlüssel zum Prüfen der Signatur
-      secretOrKey: configService.get('JWT_SECRET'),
+      secretOrKey: configService.get<string>('JWT_SECRET'),
     });
   }
 
   // Wird aufgerufen, wenn Token gültig ist
-  async validate(payload) {
-    // payload = Inhalt des Tokens
-    // { sub: "user-123", email: "max@example.com", ... }
-
-    // User-Objekt für Controller bereitstellen
+  async validate(payload: JwtPayload) {
     return {
-      id: payload.sub,
+      userId: payload.sub,
       email: payload.email,
       name: payload.name,
     };
@@ -693,268 +609,279 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 }
 ```
 
-**Der Ablauf:**
+**Was passiert hier?**
 
-```
-1. Request kommt mit Token
-   ↓
-2. Strategy extrahiert Token aus Header
-   ↓
-3. Signatur wird geprüft (mit SECRET_KEY)
-   ↓
-4. Ist Token abgelaufen? → Fehler
-   ↓
-5. validate() wird mit Token-Inhalt aufgerufen
-   ↓
-6. validate() gibt User-Objekt zurück
-   ↓
-7. User-Objekt wird in request.user gespeichert
-   ↓
-8. Controller kann request.user nutzen
-```
-
----
-
-## Sicherheit verstehen
-
-### 1. Warum HTTPS wichtig ist
-
-```
-❌ OHNE HTTPS (HTTP):
-Klartext über Internet:
-"Passwort: MeinPasswort123"
-→ Jeder kann mitlesen!
-
-✅ MIT HTTPS:
-Verschlüsselt über Internet:
-"X8#mK2@pL9..."
-→ Niemand kann mitlesen!
-```
-
-### 2. Warum Passwörter gehasht werden
-
-**Was ist Hashing?**
+**Schritt 1:** Token extrahieren
 
 ```typescript
-// Einweg-Verschlüsselung
-const passwort = 'MeinPasswort123';
-const hash = await bcrypt.hash(passwort, 10);
-
-console.log(hash);
-// "$2a$10$N9qo8uLOv..."
-
-// Du kannst NICHT zurück rechnen:
-// hash → ??? ← geht nicht!
+jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken();
 ```
 
-**Vorteil:**
+- Liest `Authorization: Bearer <token>` Header
+- Extrahiert den Token
 
-```
-Hacker knackt Datenbank
-  ↓
-Sieht: "$2a$10$N9qo8uLOv..."
-  ↓
-Kann Passwort NICHT herausfinden
-  ↓
-User sind sicher! ✅
-```
-
-### 3. Warum Token ablaufen
+**Schritt 2:** Token verifizieren
 
 ```typescript
-session: {
-  maxAge: 24 * 60 * 60,  // 1 Tag = 86400 Sekunden
+secretOrKey: configService.get<string>('JWT_SECRET');
+```
+
+- Prüft Signatur des Tokens mit Secret-Key
+- Wenn Signatur nicht passt → Fehler (Token ungültig)
+
+**Schritt 3:** Payload extrahieren
+
+```typescript
+validate(payload) {
+  return {
+    userId: payload.sub,
+    email: payload.email,
+    name: payload.name
+  };
 }
 ```
 
-**Warum?**
+- Wenn Token gültig → `payload` enthält die Daten
+- Rückgabe wird in `req.user` gespeichert
+
+---
+
+### Was macht der JwtAuthGuard?
 
 ```
-Token gestohlen nach 1 Stunde
-  ↓
-Hacker kann ihn nutzen
-  ↓
-Aber nur noch 23 Stunden
-  ↓
-Danach ungültig
-  ↓
-Schaden begrenzt
-```
+1. Request kommt rein
+   └→ Authorization: Bearer eyJhbGci...
 
-### 4. Warum Token im Backend geprüft wird
+2. Guard extrahiert Token
+   └→ Token = eyJhbGci...
 
-```
-❌ FALSCH (Frontend prüft):
-Frontend: "Token okay? Ja! → Daten laden"
-→ Hacker kann Code ändern
-→ Unsicher!
+3. Guard verifiziert Token
+   └→ Signatur prüfen mit JWT_SECRET
+   └→ Signatur stimmt? ✅
 
-✅ RICHTIG (Backend prüft):
-Backend: "Token okay? Erst prüfen!"
-→ Hacker kann nichts ändern
-→ Sicher!
+4. Guard extrahiert Payload
+   └→ { email: "user@mail.com", sub: "123", name: "John" }
+
+5. Guard ruft validate() auf
+   └→ return { userId: "123", email: "user@mail.com", name: "John" }
+
+6. Guard setzt req.user
+   └→ req.user = { userId: "123", email: "user@mail.com", name: "John" }
+
+7. Controller hat Zugriff
+   └→ const userId = req.user.userId;
 ```
 
 ---
 
-## Der komplette Ablauf (Zusammenfassung)
+## Sicherheit: Warum bcrypt?
 
-### Registrierung
+### Das Problem: Einfaches Hashing
 
-```
-1. Benutzer füllt Formular aus
-   → Email, Passwort, Name
-
-2. Frontend sendet an Backend
-   → POST /signup
-
-3. Backend prüft:
-   → Email schon vergeben?
-
-4. Backend hasht Passwort
-   → "Passwort123" → "$2a$10$..."
-
-5. Backend speichert User
-   → In Datenbank
-
-6. Backend erstellt Token
-   → JWT mit User-Info
-
-7. Frontend bekommt Token
-   → Speichert in Session
-
-8. User ist eingeloggt!
+```typescript
+// ❌ UNSICHER: Einfaches Hashing
+const hash = crypto.createHash('md5').update(password).digest('hex');
 ```
 
-### Login
+**Warum ist das unsicher?**
+
+1. Gleicher Input → immer gleicher Hash
+2. Sehr schnell zu berechnen
+3. Angreifer können **Rainbow Tables** nutzen
+
+**Rainbow Table:**
 
 ```
-1. Benutzer gibt Email + Passwort ein
-
-2. Frontend sendet an Backend
-   → POST /login
-
-3. Backend sucht User
-   → In Datenbank
-
-4. Backend vergleicht Passwort
-   → bcrypt.compare()
-
-5. Wenn korrekt: Token erstellen
-   → JWT generieren
-
-6. Frontend bekommt Token
-   → Speichert in Session
-
-7. User ist eingeloggt!
+Passwort        →  MD5-Hash
+"123456"        →  "e10adc3949ba59abbe56e057f20f883e"
+"password"      →  "5f4dcc3b5aa765d61d8327deb882cf99"
+"qwerty"        →  "d8578edf8458ce06fbc5bb76a58c5ca4"
 ```
 
-### Geschützter Bereich aufrufen
+Angreifer vergleicht einfach die Hashes!
 
-```
-1. Frontend braucht Daten
-   → z.B. Verträge laden
+---
 
-2. Frontend holt Token aus Session
+### Die Lösung: bcrypt
 
-3. Frontend sendet Request + Token
-   → GET /vertraege
-   → Header: Authorization: Bearer <token>
-
-4. Backend prüft Token
-   → JwtAuthGuard
-
-5. Wenn gültig: User-Info extrahieren
-   → request.user = { id, email, name }
-
-6. Backend lädt Daten
-   → Nur für diesen User
-
-7. Frontend bekommt Daten
-   → Zeigt sie an
+```typescript
+// ✅ SICHER: bcrypt mit Salz
+const hash = await bcrypt.hash(password, 10);
 ```
 
-### Logout
+**Warum ist das sicher?**
+
+**1. Salz (Salt)**
+
+```typescript
+// Gleiches Passwort → unterschiedliche Hashes!
+bcrypt.hash("test", 10) → "$2b$10$abc123..."
+bcrypt.hash("test", 10) → "$2b$10$xyz789..."
+```
+
+- Jeder Hash hat ein zufälliges "Salz"
+- Rainbow Tables funktionieren nicht mehr
+
+**2. Langsam (by Design)**
+
+```typescript
+saltRounds = 10  →  2^10 = 1024 Iterationen
+```
+
+- Für uns: 0.1 Sekunden (OK)
+- Für Angreifer: Milliarden Versuche = Jahre
+
+**3. Zukunftssicher**
+
+```typescript
+// In 5 Jahren, wenn Computer schneller sind:
+saltRounds = 12  →  2^12 = 4096 Iterationen
+```
+
+- Wir können `saltRounds` erhöhen
+- Alte Hashes bleiben gültig
+
+---
+
+### bcrypt vs. plain text
 
 ```
-1. Benutzer klickt "Abmelden"
+┌──────────────────┬─────────────────┬────────────────────┐
+│  Methode         │  Gespeichert    │  Sicherheit        │
+├──────────────────┼─────────────────┼────────────────────┤
+│  Plain Text      │  "test123"      │  ❌ Katastrophal  │
+│  MD5             │  "cc03e..."     │  ❌ Unsicher       │
+│  SHA-256         │  "9f86d..."     │  ⚠️  Nicht gut    │
+│  bcrypt          │  "$2b$10$..."   │  ✅ Sehr sicher   │
+└──────────────────┴─────────────────┴────────────────────┘
+```
 
-2. Frontend löscht Session
-   → signOut()
+**Was passiert bei einem Hack?**
 
-3. Token wird ungültig
-   → Cookie gelöscht
+| Methode    | Angreifer kann...                    |
+| ---------- | ------------------------------------ |
+| Plain Text | Sofort alle Passwörter sehen         |
+| MD5        | In Sekunden cracken (Rainbow Tables) |
+| SHA-256    | In Minuten cracken (GPU-Cluster)     |
+| bcrypt     | Jahrelang versuchen (fast unmöglich) |
 
-4. Weiterleitung zu Login
-   → router.push('/login')
+---
+
+## Zusammenfassung
+
+### Der komplette Ablauf
+
+**1. Registrierung**
+
+```typescript
+Frontend  →  POST /user { name, email, password }
+             ↓
+Frontend  →  bcrypt.hash(password, 10) = hash
+             ↓
+Backend   →  Speichert { name, email, passwordHash: hash }
+```
+
+**2. Login**
+
+```typescript
+Frontend  →  POST /user/login { email, password }
+             ↓
+Backend   →  User aus DB laden
+             bcrypt.compare(password, user.passwordHash)
+             JWT erstellen mit { sub: userId, email, name }
+             ↓
+Frontend  →  Token speichern (Session)
+```
+
+**3. Geschützte Route**
+
+```typescript
+Frontend  →  GET /contracts/me
+             Authorization: Bearer <token>
+             ↓
+Backend   →  JwtAuthGuard prüft Token
+             JwtStrategy.validate() extrahiert User-ID
+             req.user = { userId, email, name }
+             ↓
+Backend   →  Daten für diesen User laden
+             ↓
+Frontend  →  Daten anzeigen
 ```
 
 ---
 
-## Häufige Fragen
+### Die wichtigsten Funktionen
 
-### "Wo wird das Passwort gespeichert?"
+```typescript
+// Passwort verschlüsseln (Frontend beim Registrieren)
+const hash = await bcrypt.hash(password, 10);
 
-```
-✅ In der Datenbank
-✅ Aber NUR als Hash
-❌ NIEMALS im Klartext
-```
+// Passwort prüfen (Backend beim Login)
+const isValid = await bcrypt.compare(password, hash);
 
-### "Kann jemand meinen Token klauen?"
+// JWT erstellen (Backend nach erfolgreichem Login)
+const token = jwtService.sign({ sub: userId, email, name });
 
-```
-Schwierig, weil:
-✅ HTTPS verschlüsselt die Übertragung
-✅ Token ist im httpOnly Cookie (JavaScript kann nicht drauf zugreifen)
-✅ Token läuft nach 24h ab
-
-Aber trotzdem aufpassen:
-❌ Nicht auf fremden Computern einloggen
-❌ Immer ausloggen nach der Nutzung
-```
-
-### "Warum NextAuth UND JWT?"
-
-```
-NextAuth:
-→ Vereinfacht Login/Logout im Frontend
-→ Verwaltet Sessions
-→ Kümmert sich um Cookies
-
-JWT:
-→ Das Format des Tokens
-→ Wird vom Backend erstellt und geprüft
-→ Enthält User-Informationen
-
-Sie arbeiten zusammen!
+// JWT prüfen (automatisch im JwtAuthGuard)
+@UseGuards(JwtAuthGuard)
+→ req.user = { userId, email, name }
 ```
 
 ---
 
-## Zusammenfassung für Anfänger
+### Sicherheits-Checkliste
 
-### Die wichtigsten Punkte:
+✅ **Passwörter werden mit bcrypt verschlüsselt (saltRounds: 10)**
+✅ **Hashing passiert im Frontend (vor dem Senden)**
+✅ **bcrypt.compare() zum Validieren (nicht decrypt)**
+✅ **JWT-Tokens für Authentifizierung**
+✅ **JwtAuthGuard schützt sensible Routen**
+✅ **User-ID aus Token extrahieren (nicht vom Frontend)**
 
-1. **Passwörter werden NIEMALS im Klartext gespeichert**
-   - Nur als Hash mit bcrypt
+---
 
-2. **Passwort-Prüfung passiert IMMER im Backend**
-   - Frontend ist nicht vertrauenswürdig
+### Häufige Fehler (Was NICHT tun)
 
-3. **JWT Token = Digitaler Ausweis**
-   - Beweist, dass du eingeloggt bist
-   - Läuft nach 24 Stunden ab
+```typescript
+// ❌ FALSCH: Passwort als Klartext senden
+fetch('/api/register', { body: JSON.stringify({ password }) });
 
-4. **HTTPS ist Pflicht**
-   - Schützt Daten auf dem Weg
+// ✅ RICHTIG: Hash senden
+const hash = await bcrypt.hash(password, 10);
+fetch('/api/register', { body: JSON.stringify({ passwordHash: hash }) });
+```
 
-5. **Geschützte Routen brauchen Token**
-   - Backend: @UseGuards(JwtAuthGuard)
-   - Frontend: <ProtectedComponent>
+```typescript
+// ❌ FALSCH: Passwort entschlüsseln
+const password = bcrypt.decrypt(hash); // Geht NICHT!
 
-### Der Merksatz:
+// ✅ RICHTIG: Passwort vergleichen
+const isValid = await bcrypt.compare(password, hash);
+```
 
-> **"Hash im Backend, Token im Cookie, Prüfung auf dem Server"**
+```typescript
+// ❌ FALSCH: User-ID vom Frontend akzeptieren
+@Get('contracts')
+getContracts(@Body('userId') userId: string) { }
 
-Das Authentifizierungs-System schützt deine Benutzer und ihre Daten. Es folgt bewährten Sicherheits-Standards und ist production-ready!
+// ✅ RICHTIG: User-ID aus Token holen
+@UseGuards(JwtAuthGuard)
+@Get('contracts/me')
+getContracts(@Request() req) {
+  const userId = req.user.userId;
+}
+```
+
+---
+
+### Merksätze
+
+> **"Passwörter im Frontend hashen, als Hash senden!"**
+
+> **"bcrypt.compare() vergleicht, decrypt gibt es nicht!"**
+
+> **"User-ID immer aus Token, nie vom Frontend!"**
+
+---
+
+**Fertig!** Du verstehst jetzt Authentifizierung! 🔐

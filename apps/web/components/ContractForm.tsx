@@ -41,8 +41,6 @@ export function ContractForm({ onAddContract }: ContractFormProps) {
     setCycle,
     category,
     setCategory,
-    startDate,
-    setStartDate,
     formattedStartDate,
     handleStartDateChange,
     handleSubmit,
