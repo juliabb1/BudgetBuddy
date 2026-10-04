@@ -1,149 +1,95 @@
-pnpm PackageManager
-TechStack, gegliedert nach Ebene:
+# BudgetBuddy
 
-Turborepo (Root):
+> Keep track of all your recurring costs and plan future payments.
 
-- prettier
+University project for **Web Application Architecture** at Hochschule der Medien Stuttgart (Prof. Dr. Fridtjof Toenniessen, 2026).
 
-Packages:
-shared-types: - zod
+**Team:** Julia Bai · Sonja Schlegel · Timo Waldherr
 
-Apps:
-backend: - @nestjs/config - zod - prisma - prisma/client - ts-ndoe
-frontend: - next.js - with App Router - tailwind - axios - zod
+## Idea
 
-# Turborepo starter
+Most finance apps don't give a clear overview of running contracts. BudgetBuddy makes upcoming payments predictable, helps avoid financial bottlenecks and shows all obligations in one place.
 
-This Turborepo starter is maintained by the Turborepo core team.
+## Features
 
-## Using this example
+- Registration, login and token-based authentication
+- Create, edit and delete contracts
+- Upload contract documents
+- Generate a cancellation letter draft
+- Dashboard with expense charts per category
+- Balance calculation (monthly, quarterly, half-yearly, yearly)
 
-Run the following command:
+<!-- TODO: add screenshots (dashboard, login, charts) -->
 
-```sh
-npx create-turbo@latest
-```
+## Tech Stack
 
-## What's inside?
+| Layer | Technologies |
+|---|---|
+| Frontend | Next.js (App Router), React, TypeScript, Tailwind CSS, Axios, Zod |
+| Backend | NestJS (Node.js), Prisma ORM, Passport + JWT, Zod |
+| Database | PostgreSQL |
+| Auth | NextAuth.js (Credentials Provider), bcrypt, JWT |
+| Infrastructure | Docker (3 containers: frontend, backend, database) |
 
-This Turborepo includes the following packages/apps:
+## Architecture
 
-### Apps and Packages
+**Layered architecture** (presentation, application, data management) with cross-cutting shared types and Zod schemas. The presentation layer never accesses the data layer directly.
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
+**MVP pattern in the frontend:**
 
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
+| Role | Responsibility | Example |
+|---|---|---|
+| Model | Data, API endpoints, validation schemas | NestJS controllers/services, `packages/shared-types` |
+| View | Renders only what it receives, reports user events via callbacks | `ContractForm`, `ContractList` |
+| Presenter | State, API calls, data preparation, optimistic updates with rollback | `useContracts`, `useContractForm` (custom hooks) |
 
-### Utilities
+Benefits: separation of concerns, presenter logic testable without UI rendering, reusable hooks, end-to-end type safety through shared Zod schemas.
 
-This Turborepo has some additional tools already setup for you:
-
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
-
-### Build
-
-To build all apps and packages, run the following command:
+### Repository structure
 
 ```
-cd my-turborepo
-
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo build
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo build
-yarn dlx turbo build
-pnpm exec turbo build
+apps/
+  backend/        NestJS API (controllers, services, auth, Prisma)
+  web/            Next.js frontend (views, presenter hooks)
+packages/
+  shared-types/   Zod schemas, DTOs and types shared by frontend and backend
 ```
 
-You can build a specific package by using a [filter](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters):
+### API overview
 
-```
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo build --filter=docs
+All routes except register and login are protected by a JWT guard.
 
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo build --filter=docs
-yarn exec turbo build --filter=docs
-pnpm exec turbo build --filter=docs
-```
+| Resource | Endpoints |
+|---|---|
+| `/user` | `POST /` (register), `POST /login`, `GET/PUT/DELETE /{id}` |
+| `/contracts` | `GET /me`, `POST /`, `PUT /{id}`, `DELETE /{id}` |
+| `/contracts` (documents) | `POST /{id}/documents`, `DELETE /documents/{documentId}`, `GET /documents/{documentId}/download` |
 
-### Develop
+## Authentication
 
-To develop all apps and packages, run the following command:
+1. **Register:** user data is validated and stored, passwords are hashed with bcrypt.
+2. **Login:** the backend validates the credentials and signs a JWT.
+3. **Authorized requests:** the client sends the token in the `Authorization` header, a Passport JWT strategy verifies signature and expiry, `JwtAuthGuard` protects the controllers.
+4. **Logout:** the client-side session is cleared.
 
-```
-cd my-turborepo
+## Getting Started
 
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo dev
+**Prerequisites:** Docker and Docker Compose
 
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo dev
-yarn exec turbo dev
-pnpm exec turbo dev
-```
-
-You can develop a specific package by using a [filter](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters):
-
-```
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo dev --filter=web
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo dev --filter=web
-yarn exec turbo dev --filter=web
-pnpm exec turbo dev --filter=web
+```bash
+git clone https://github.com/juliabb1/BudgetBuddy.git
+cd BudgetBuddy
+cp .env.example .env     # adjust values (JWT_SECRET, database credentials)
+docker compose up --build
 ```
 
-### Remote Caching
+| Service | URL |
+|---|---|
+| Frontend | http://localhost:3000 |
+| Backend | http://localhost:3001 |
+| PostgreSQL | port 5432 |
 
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
 
-Turborepo can use a technique known as [Remote Caching](https://turborepo.com/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
+## License
 
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
-
-```
-cd my-turborepo
-
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo login
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo login
-yarn exec turbo login
-pnpm exec turbo login
-```
-
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
-
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
-
-```
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo link
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo link
-yarn exec turbo link
-pnpm exec turbo link
-```
-
-## Useful Links
-
-Learn more about the power of Turborepo:
-
-- [Tasks](https://turborepo.com/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.com/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.com/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.com/docs/reference/configuration)
-- [CLI Usage](https://turborepo.com/docs/reference/command-line-reference)
+Created as a university project at HdM Stuttgart.
