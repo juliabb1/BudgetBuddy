@@ -2,7 +2,7 @@
 
 > Keep track of all your recurring costs and plan future payments.
 
-University project for **Web Application Architecture** at Hochschule der Medien Stuttgart (Prof. Dr. Fridtjof Toenniessen, 2026).
+University project for **Web Application Architecture** at Hochschule der Medien Stuttgart (Prof. Dr. Fridtjof Toenniessen, 2025).
 
 **Team:** Julia Bai · Sonja Schlegel · Timo Waldherr
 
